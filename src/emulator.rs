@@ -56,40 +56,60 @@ impl Emulator {
         let opcode = self.get_opcode();
         let (instruction, value) = Emulator::deconstruct_opcode(opcode);
 
-        match instruction {
-            0x0 => {
-                match value {
-                    0xEE => {
-                        // Return from a subroutine
-                        emu.stack_pointer -= 1;
-                        emu.program_counter = (emu.stack[emu.stack_pointer] + 2) as usize
-                    }
-                    _ => println!("Missed!")
-                }
-            }
-            0x1 => {
-                // Jumps to address at `value`
-                emu.program_counter = value.into();
-            }
-            0x2 => {
-                // Calls Subroutine at `value`
-                emu.stack[emu.stack_pointer] = emu.program_counter as u16;
-                emu.stack_pointer += 1;
-                emu.program_counter = value.into();
-            }
-            0xA => {
-                emu.index_register = value;
-                emu.program_counter += 2;
-            }
-            _ => println!("Missed!")
-        }
+        let run = match instruction {
+            0x0 => opcodes::system,
+            0x2 => opcodes::call_subroutine,
+            0xA => opcodes::set_index_register,
+            _ => opcodes::ident
+        };
 
-        return emu;
+        return run(&emu, value)
     }
 
     fn deconstruct_opcode(opcode: u16) -> (u8, u16) {
         ((opcode >> 12) as u8, opcode & 0x0FFF)
     }
+}
+
+mod opcodes {
+    use crate::emulator::Emulator;
+
+    pub fn ident(emu: &Emulator, value: u16) -> Emulator {
+        Emulator {
+            ..*emu
+        }
+    }
+
+    pub fn system(emu: &Emulator, value: u16) -> Emulator {
+        match value {
+            0xEE => Emulator {
+                stack_pointer: emu.stack_pointer - 1,
+                program_counter: (emu.stack[emu.stack_pointer] + 2) as usize,
+                ..*emu
+            },
+            _ => ident(emu, value) //TODO: Implement
+        }
+    }
+
+    pub fn call_subroutine(emu: &Emulator, value: u16) -> Emulator {
+        let mut emu = Emulator {
+            ..*emu
+        };
+
+        emu.stack[emu.stack_pointer] = emu.program_counter as u16;
+        emu.stack_pointer += 1;
+        emu.program_counter = value.into();
+        emu
+    }
+    
+    pub fn set_index_register(emu: &Emulator, value: u16) -> Emulator {
+        Emulator {
+            index_register: value,
+            program_counter: emu.program_counter + 2,
+            ..*emu
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -107,3 +127,5 @@ mod tests {
         assert_eq!(emu.index_register, new_index_reg);
     }
 }
+
+
