@@ -1,9 +1,4 @@
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod Emulator;
 
-    #[test]
-    fn internal() {
-        assert_eq!(4, internal_adder(2, 2));
-    }
-}
+use crate::emulator::Emulator;
+
