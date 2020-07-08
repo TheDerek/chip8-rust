@@ -51,21 +51,20 @@ impl Emulator {
     }
 
     pub fn emulate_cycle(&self) -> Emulator {
-        let mut emu = Emulator {
-            ..*self
-        };
-
         let opcode = self.get_opcode();
         let (instruction, value) = Emulator::deconstruct_opcode(opcode);
 
         let run = match instruction {
             0x0 => opcodes::system,
+            0x1 => opcodes::goto,
             0x2 => opcodes::call_subroutine,
+            0x3 => opcodes::skip_true,
+            0x6 => opcodes::set_register,
             0xA => opcodes::set_index_register,
             _ => opcodes::ident
         };
 
-        return run(&emu, value)
+        return run(&self, value)
     }
 
     fn deconstruct_opcode(opcode: u16) -> (u8, u16) {
@@ -88,5 +87,3 @@ mod tests {
         assert_eq!(emu.index_register, new_index_reg);
     }
 }
-
-
