@@ -1,20 +1,30 @@
 use crate::emulator::*;
 
+/// Dose nothing but skip the next instruction. Used for instructions not implemnted yet
 pub fn ident(emu: &Emulator, value: u16) -> Emulator {
     Emulator {
+        program_counter: emu.program_counter + 2,
         ..*emu
     }
 }
 
+/// Manages the 0x0FFF opcodes
 pub fn system(emu: &Emulator, value: u16) -> Emulator {
     match value {
         // Return from subroutine
-        0x0EE => Emulator {
-            stack_pointer: emu.stack_pointer - 1,
-            program_counter: (emu.stack[emu.stack_pointer] + 2) as usize,
-            ..*emu
-        },
+        0x0EE => return_from_subroutine(emu, value),
         _ => ident(emu, value) //TODO: Implement
+    }
+}
+
+pub fn return_from_subroutine(emu: &Emulator, value: u16) -> Emulator {
+    // The new stack pointer that contains the location of the code we are
+    // going to jump back to
+    let stack_pointer = emu.stack_pointer -1;
+    Emulator {
+        stack_pointer,
+        program_counter: (emu.stack[stack_pointer] + 2) as usize,
+        ..*emu
     }
 }
 
@@ -54,14 +64,16 @@ mod tests {
     }
 
     #[test]
+    /// Run a subroutine and then return from it, testing both call_subroutine and
+    /// return from subroutine
     fn subroutine() {
-        let subroutine_loc = PROGRAM_LOC + 0x123;
+        let subroutine_loc = 0x623;
 
         let mut emu = Emulator::new();
         assert_eq!(emu.program_counter, PROGRAM_LOC);
 
         // Jump to subroutine 0x123
-        emu.memory[emu.program_counter] = 0x21;
+        emu.memory[emu.program_counter] = 0x26;
         emu.memory[emu.program_counter + 1] = 0x23;
 
         // Clear the screen 
@@ -77,7 +89,7 @@ mod tests {
         }
 
         // Make sure we are on the second instruction
-        assert_eq!(emu.program_counter, PROGRAM_LOC + 2);
+        assert_eq!(PROGRAM_LOC + 2, emu.program_counter);
     }
 }
 
