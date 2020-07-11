@@ -60,6 +60,25 @@ pub fn skip_true(emu: &Emulator, value: u16) -> Emulator {
     }
 }
 
+/// Skips the next instruction if VX does not equal NN
+pub fn skip_false(emu: &Emulator, value: u16) -> Emulator {
+    let reg_loc = (value >> 8) as usize;
+    let expected_reg_value = (value & 0x0FF) as u8;
+
+    let should_skip = emu.registers[reg_loc] != expected_reg_value;
+    let pc_delta = if should_skip { 4 } else { 2 };
+
+    Emulator {
+        program_counter: emu.program_counter + pc_delta,
+        ..*emu
+    }
+}
+
+/// Skips the next instruction if VX does not equal NN
+pub fn skip_equals(emu: &Emulator, value: u16) -> Emulator {
+    // TODO
+}
+
 pub fn set_register(emu: &Emulator, value: u16) -> Emulator {
     let reg_loc = (value >> 8) as usize;
     let new_reg_value = (value & 0x0FF) as u8;
@@ -140,6 +159,37 @@ mod tests {
         // Skip the next instruction if register A is 33
         emu.memory[pc + 2] = 0x3A;
         emu.memory[pc + 3] = 0x33;
+        
+        // Set register A to 66
+        emu.memory[pc + 4] = 0x6A;
+        emu.memory[pc + 5] = 0x66;
+
+        for _ in 0..3 {
+            emu = emu.emulate_cycle();
+        }
+
+        // We have moved 3 instructions + one skipped instruction = 4 * 2 = 8
+        assert_eq!(pc + 8, emu.program_counter);
+
+        // Make sure that the last instruction didn't execute and that register A
+        // is still at the inital value we set
+        assert_eq!(0x33, emu.registers[0xA]);
+    }
+    
+    /// Test that we can insert a value to a register and then compare against
+    /// value to skip the instruction
+    #[test]
+    fn skip_false() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter; 
+
+        // Set register A to A33
+        emu.memory[pc] = 0x6A;
+        emu.memory[pc + 1] = 0x33;
+
+        // Skip the next instruction if register A is not A34
+        emu.memory[pc + 2] = 0x4A;
+        emu.memory[pc + 3] = 0x34;
         
         // Set register A to 66
         emu.memory[pc + 4] = 0x6A;
