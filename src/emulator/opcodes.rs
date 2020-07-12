@@ -129,26 +129,26 @@ pub fn set_index_register(emu: &Emulator, value: u16) -> Emulator {
 /// Various bitwise and mathmatical operations for 0x8***
 pub fn maths_ops(emu: &Emulator, value: u16) -> Emulator {
     let secondary_instruction = (value & 0x00F) as u8;
-    let x = (value >> 8) as usize;
-    let y = ((value & 0x0F0) >> 4) as usize;
-    
-    match secondary_instruction {
-        0x0 => assgin(emu, x, y),
-        _ => ident(emu, value) //TODO: Implement
-    }
-}
+    let ix = (value >> 8) as usize;
+    let iy = ((value & 0x0F0) >> 4) as usize;
 
-/// Assign VX to the value of VY
-///
-/// # Arguments
-/// - `x` - The index of the register that is being assgined to
-/// - `y` - The index of the register the value is coming from
-fn assgin(emu: &Emulator, x: usize, y: usize) -> Emulator {
     let mut emu = Emulator {
         ..*emu
     };
 
-    emu.registers[x] = emu.registers[y];
+    let x = emu.registers[ix];
+    let y = emu.registers[iy];
+    
+    emu.registers[ix] = match secondary_instruction {
+        0x0 => y,
+        0x1 => x | y,
+        0x2 => x & y,
+        0x3 => x ^ y,
+        0x4 => x + y,
+        0x5 => x - y,
+        _ => x
+    };
+
     emu
 }
 
