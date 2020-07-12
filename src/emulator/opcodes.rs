@@ -76,7 +76,20 @@ pub fn skip_false(emu: &Emulator, value: u16) -> Emulator {
 
 /// Skips the next instruction if VX does not equal NN
 pub fn skip_equals(emu: &Emulator, value: u16) -> Emulator {
-    // TODO
+    // 5XY0
+    let x = (value >> 8) as usize;
+    let y = ((value & 0x0F0) >> 4) as usize;
+
+    let mut pc_inc = 2;
+
+    if emu.registers[x] == emu.registers[y] {
+        pc_inc += 2;
+    }
+
+    Emulator {
+        program_counter: emu.program_counter + pc_inc,
+        ..*emu
+    }
 }
 
 pub fn set_register(emu: &Emulator, value: u16) -> Emulator {
@@ -92,12 +105,51 @@ pub fn set_register(emu: &Emulator, value: u16) -> Emulator {
     emu
 }
 
+pub fn add_to_register(emu: &Emulator, value: u16) -> Emulator {
+    let reg_loc = (value >> 8) as usize;
+    let reg_inc = (value & 0x0FF) as u8;
+
+    let mut emu = Emulator {
+        program_counter: emu.program_counter + 2,
+        ..*emu
+    };
+
+    emu.registers[reg_loc] += reg_inc;
+    emu
+}
+
 pub fn set_index_register(emu: &Emulator, value: u16) -> Emulator {
     Emulator {
         index_register: value,
         program_counter: emu.program_counter + 2,
         ..*emu
     }
+}
+
+/// Various bitwise and mathmatical operations for 0x8***
+pub fn maths_ops(emu: &Emulator, value: u16) -> Emulator {
+    let secondary_instruction = (value & 0x00F) as u8;
+    let x = (value >> 8) as usize;
+    let y = ((value & 0x0F0) >> 4) as usize;
+    
+    match secondary_instruction {
+        0x0 => assgin(emu, x, y),
+        _ => ident(emu, value) //TODO: Implement
+    }
+}
+
+/// Assign VX to the value of VY
+///
+/// # Arguments
+/// - `x` - The index of the register that is being assgined to
+/// - `y` - The index of the register the value is coming from
+fn assgin(emu: &Emulator, x: usize, y: usize) -> Emulator {
+    let mut emu = Emulator {
+        ..*emu
+    };
+
+    emu.registers[x] = emu.registers[y];
+    emu
 }
 
 #[cfg(test)]
@@ -205,5 +257,60 @@ mod tests {
         // Make sure that the last instruction didn't execute and that register A
         // is still at the inital value we set
         assert_eq!(0x33, emu.registers[0xA]);
+    }
+
+    #[test]
+    fn skip_equals() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter;
+        emu.registers[2] = 5;
+        emu.registers[3] = 5;
+
+        // Skip the next instruction if V2 doesn't equal V3
+        emu.memory[pc] = 0x52;
+        emu.memory[pc + 1] = 0x30;
+
+        // Process that instruction
+        emu = emu.emulate_cycle();
+
+        // Make sure we have skipped ahead two instructions
+        assert_eq!(emu.program_counter, pc + 4);
+    }
+
+    #[test]
+    fn add_to_register() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter;
+        emu.registers[3] = 5;
+
+        // Add 6 to register 3
+        emu.memory[pc] = 0x73;
+        emu.memory[pc + 1] = 0x06;
+
+        // Process that instruction
+        emu = emu.emulate_cycle();
+
+        // Make sure we have added to the register
+        assert_eq!(11, emu.registers[3]);
+    }
+
+    #[test]
+    fn test_assign() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter;
+        let y: usize = 3;
+        let x: usize = 0xA;
+
+        emu.registers[y] = 5;
+
+        // Assign X to Y 
+        emu.memory[pc] = 0x8A;
+        emu.memory[pc + 1] = 0x30;
+
+        // Process that instruction
+        emu = emu.emulate_cycle();
+
+        // Make sure we have assigned to the register
+        assert_eq!(5, emu.registers[x]);
     }
 }

@@ -60,7 +60,10 @@ impl Emulator {
             0x2 => opcodes::call_subroutine,
             0x3 => opcodes::skip_true,
             0x4 => opcodes::skip_false,
+            0x5 => opcodes::skip_equals,
             0x6 => opcodes::set_register,
+            0x7 => opcodes::add_to_register,
+            0x8 => opcodes::maths_ops,
             0xA => opcodes::set_index_register,
             _ => opcodes::ident
         };
