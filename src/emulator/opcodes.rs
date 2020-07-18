@@ -74,22 +74,33 @@ pub fn skip_false(emu: &Emulator, value: u16) -> Emulator {
     }
 }
 
-/// Skips the next instruction if VX equals NN
-pub fn skip_condition(emu: &Emulator, value: u16, condition: fn(u8, u8) -> bool) -> Emulator {
-    // 5XY0
-    let x = (value >> 8) as usize;
-    let y = ((value & 0x0F0) >> 4) as usize;
+/// Skips the next instruction if VX equals VY
+pub fn skip_equals(emu: &Emulator, value: u16) -> Emulator {
+    skip_condition(|x, y| { x == y })(emu, value)
+}
 
-    let mut pc_inc = 2;
+/// Skips the next instruction if VX does not equal VY
+pub fn skip_not_equals(emu: &Emulator, value: u16) -> Emulator {
+    skip_condition(|x, y| { x != y })(emu, value)
+}
 
-    if condition(emu.registers[x], emu.registers[y]) {
-        pc_inc += 2;
-    }
+pub fn skip_condition(condition: fn(u8, u8) -> bool) -> Box<dyn Fn(&Emulator, u16) -> Emulator> {
+    Box::new(move |emu: &Emulator, value: u16| -> Emulator {
+        // 5XY0
+        let x = (value >> 8) as usize;
+        let y = ((value & 0x0F0) >> 4) as usize;
 
-    Emulator {
-        program_counter: emu.program_counter + pc_inc,
-        ..*emu
-    }
+        let mut pc_inc = 2;
+
+        if condition(emu.registers[x], emu.registers[y]) {
+            pc_inc += 2;
+        }
+
+        Emulator {
+            program_counter: emu.program_counter + pc_inc,
+            ..*emu
+        }
+    })
 }
 
 pub fn set_register(emu: &Emulator, value: u16) -> Emulator {
@@ -292,12 +303,68 @@ mod tests {
     #[test]
     fn skip_equals() {
         let mut emu = Emulator::new();
-        let pc = emu.program_counter;
+        let pc = emu.program_counter;        emu.memory[pc] = 0x6A;
+        emu.memory[pc + 1] = 0x33;
+
+        // Skip the next instruction if register A is 33
+        emu.memory[pc + 2] = 0x3A;
+        emu.memory[pc + 3] = 0x33;
+        
+        // Set register A to 66
+        emu.memory[pc + 4] = 0x6A;
+        emu.memory[pc + 5] = 0x66;
+
+        for _ in 0..3 {
+            emu = emu.emulate_cycle();
+        }
+
+        // We have moved 3 instructions + one skipped instruction = 4 * 2 = 8
+        assert_eq!(pc + 8, emu.program_counter);
+
+        // Make sure that the last instruction didn't execute and that register A
+        // is still at the inital value we set
+        assert_eq!(0x33, emu.registers[0xA]);
+    }
+    
+    /// Test that we can insert a value to a register and then compare against
+    /// value to skip the instruction
+    #[test]
+    fn skip_false() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter; 
+
+        // Set register A to A33
+        emu.memory[pc] = 0x6A;
+        emu.memory[pc + 1] = 0x33;
+
+        // Skip the next instruction if register A is not A34
+        emu.memory[pc + 2] = 0x4A;
+        emu.memory[pc + 3] = 0x34;
+        
+
         emu.registers[2] = 5;
         emu.registers[3] = 5;
 
-        // Skip the next instruction if V2 doesn't equal V3
+        // Skip the next instruction if VX equals VY
         emu.memory[pc] = 0x52;
+        emu.memory[pc + 1] = 0x30;
+
+        // Process that instruction
+        emu = emu.emulate_cycle();
+
+        // Make sure we have skipped ahead two instructions
+        assert_eq!(emu.program_counter, pc + 4);
+    }
+
+    #[test]
+    fn not_equals() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter;
+        emu.registers[2] = 5;
+        emu.registers[3] = 6;
+
+        // Skip the next instruction if VX doesn't equal VY
+        emu.memory[pc] = 0x92;
         emu.memory[pc + 1] = 0x30;
 
         // Process that instruction
@@ -317,7 +384,45 @@ mod tests {
         emu.memory[pc] = 0x73;
         emu.memory[pc + 1] = 0x06;
 
-        // Process that instruction
+        // Process that instruction        emu.memory[pc] = 0x6A;
+        emu.memory[pc + 1] = 0x33;
+
+        // Skip the next instruction if register A is 33
+        emu.memory[pc + 2] = 0x3A;
+        emu.memory[pc + 3] = 0x33;
+        
+        // Set register A to 66
+        emu.memory[pc + 4] = 0x6A;
+        emu.memory[pc + 5] = 0x66;
+
+        for _ in 0..3 {
+            emu = emu.emulate_cycle();
+        }
+
+        // We have moved 3 instructions + one skipped instruction = 4 * 2 = 8
+        assert_eq!(pc + 8, emu.program_counter);
+
+        // Make sure that the last instruction didn't execute and that register A
+        // is still at the inital value we set
+        assert_eq!(0x33, emu.registers[0xA]);
+    }
+    
+    /// Test that we can insert a value to a register and then compare against
+    /// value to skip the instruction
+    #[test]
+    fn skip_false() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter; 
+
+        // Set register A to A33
+        emu.memory[pc] = 0x6A;
+        emu.memory[pc + 1] = 0x33;
+
+        // Skip the next instruction if register A is not A34
+        emu.memory[pc + 2] = 0x4A;
+        emu.memory[pc + 3] = 0x34;
+        
+
         emu = emu.emulate_cycle();
 
         // Make sure we have added to the register

@@ -64,8 +64,9 @@ impl Emulator {
             0x6 => opcodes::set_register,
             0x7 => opcodes::add_to_register,
             0x8 => opcodes::maths_ops,
+            0x9 => opcodes::skip_not_equals,
             0xA => opcodes::set_index_register,
-            _ => opcodes::ident
+            _   => opcodes::ident
         };
 
         return run(&self, value)
