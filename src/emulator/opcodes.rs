@@ -74,15 +74,15 @@ pub fn skip_false(emu: &Emulator, value: u16) -> Emulator {
     }
 }
 
-/// Skips the next instruction if VX does not equal NN
-pub fn skip_equals(emu: &Emulator, value: u16) -> Emulator {
+/// Skips the next instruction if VX equals NN
+pub fn skip_condition(emu: &Emulator, value: u16, condition: fn(u8, u8) -> bool) -> Emulator {
     // 5XY0
     let x = (value >> 8) as usize;
     let y = ((value & 0x0F0) >> 4) as usize;
 
     let mut pc_inc = 2;
 
-    if emu.registers[x] == emu.registers[y] {
+    if condition(emu.registers[x], emu.registers[y]) {
         pc_inc += 2;
     }
 
@@ -137,19 +137,49 @@ pub fn maths_ops(emu: &Emulator, value: u16) -> Emulator {
     };
 
     let x = emu.registers[ix];
+    let f = emu.registers[0xF];
     let y = emu.registers[iy];
     
-    emu.registers[ix] = match secondary_instruction {
-        0x0 => y,
-        0x1 => x | y,
-        0x2 => x & y,
-        0x3 => x ^ y,
-        0x4 => x + y,
-        0x5 => x - y,
-        _ => x
+    // These operations both set Vx and Vf
+    let (x, f) = match secondary_instruction {
+        0x0 => (y, f),
+        0x1 => (x | y, f),
+        0x2 => (x & y, f),
+        0x3 => (x ^ y, f),
+        0x4 => addition_carry(x, y),
+        0x5 => minus_carry(x, y),
+        0x6 => (x >> 1, x & 0b00000001),
+        0x7 => minus_carry(y, x),
+        0xE => (x << 1, x >> 7),
+        _ => (x, f)
     };
 
+    emu.registers[ix] = x;
+    emu.registers[0xF] = f;
+
     emu
+}
+
+/// Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
+fn addition_carry(x: u8, y: u8) -> (u8, u8) {
+    let result: i16 = (x as i16) + (y as i16);
+
+    if result > 255 {
+        return ((result - 256) as u8, 1);
+    }
+
+    (result as u8, 0)
+}
+
+/// VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't
+fn minus_carry(x: u8, y: u8) -> (u8, u8) {
+    let result: i16 = (x as i16) - (y as i16);
+
+    if result < 0 {
+        return ((256 + result) as u8, 0);
+    }
+
+    (result as u8, 1)
 }
 
 #[cfg(test)]
@@ -312,5 +342,64 @@ mod tests {
 
         // Make sure we have assigned to the register
         assert_eq!(5, emu.registers[x]);
+    }
+
+    #[test]
+    fn test_carry() {
+        let (x, f) = addition_carry(255, 0);
+        assert_eq!(255, x);
+        assert_eq!(0, f);
+
+        let (x, f) = addition_carry(255, 2);
+        assert_eq!(1, x);
+        assert_eq!(1, f);
+
+        let (x, f) = minus_carry(50, 3);
+        assert_eq!(47, x);
+        assert_eq!(1, f);
+
+        let (x, f) = minus_carry(0, 1);
+        assert_eq!(255, x);
+        assert_eq!(0, f);
+    }
+
+    #[test]
+    fn right_bit_shift() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter;
+        let x: usize = 0xA;
+
+        emu.registers[x] = 0b00000001;
+
+        // Shift x to the right
+        emu.memory[pc] = 0x8A;
+        emu.memory[pc + 1] = 0x06;
+
+        // Process that instruction
+        emu = emu.emulate_cycle();
+
+        // Make sure we have assigned to the register
+        assert_eq!(0, emu.registers[x]);
+        assert_eq!(1, emu.registers[0xF]);
+    }
+
+    #[test]
+    fn left_bit_shift() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter;
+        let x: usize = 0xA;
+
+        emu.registers[x] = 0b10000000;
+
+        // Shift x to the left
+        emu.memory[pc] = 0x8A;
+        emu.memory[pc + 1] = 0x0E;
+
+        // Process that instruction
+        emu = emu.emulate_cycle();
+
+        // Make sure we have assigned to the register
+        assert_eq!(0, emu.registers[x]);
+        assert_eq!(1, emu.registers[0xF]);
     }
 }
