@@ -6,13 +6,19 @@ use std::io::Read;
 // Where the program starts in memory
 const PROGRAM_LOC: usize = 0x200;
 
+#[derive(Copy, Clone)]
+pub enum Pixel {
+    ON,
+    OFF
+}
+
 pub struct Emulator {
     opcode: u16,
     memory: [u8; 4096],
     registers: [u8; 16],
     index_register: u16,
     program_counter: usize,
-    graphics: [u8; Emulator::SCREEN_SIZE],
+    graphics: [Pixel; Emulator::SCREEN_SIZE],
     delay_timer: u8,
     sound_timer: u8,
     stack: [u16; 16],
@@ -20,9 +26,9 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    const SCREEN_WIDTH: usize = 64;
-    const SCREEN_HEIGHT: usize = 32;
-    const SCREEN_SIZE: usize = Emulator::SCREEN_WIDTH * Emulator::SCREEN_HEIGHT;
+    pub const SCREEN_WIDTH: u32 = 64;
+    pub const SCREEN_HEIGHT: u32 = 32;
+    const SCREEN_SIZE: usize = (Emulator::SCREEN_WIDTH * Emulator::SCREEN_HEIGHT) as usize;
 
     fn new() -> Emulator {
         Emulator {
@@ -31,13 +37,14 @@ impl Emulator {
             registers: [0; 16],
             index_register: 0,
             program_counter: PROGRAM_LOC,
-            graphics: [0; Emulator::SCREEN_SIZE],
+            graphics: [Pixel::OFF; Emulator::SCREEN_SIZE],
             delay_timer: 0,
             sound_timer: 0,
             stack: [0; 16],
             stack_pointer: 0,
         }
     }
+
     pub fn load(path: &str) -> Emulator {
         let mut file = File::open(path).unwrap();
         let mut buf = [0u8; 4096];
@@ -46,7 +53,20 @@ impl Emulator {
 
         let mut emu = Emulator::new();
         emu.memory = buf;
+
+        for i in 0..Emulator::SCREEN_SIZE {
+            if i % 3 != 0 {
+                continue;
+            }
+
+            emu.graphics[i] = Pixel::ON;
+        }
+
         emu
+    }
+
+    pub fn get_pixel(&self, x: u32, y: u32) -> Pixel {
+       self.graphics[((y * Emulator::SCREEN_WIDTH) + x) as usize]
     }
 
     fn get_opcode(&self) -> u16 {

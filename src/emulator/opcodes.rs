@@ -15,7 +15,7 @@ pub fn system(emu: &Emulator, value: u16) -> Emulator {
         0x0EE => return_from_subroutine(emu, value),
         0x0E0 => Emulator {
             program_counter: emu.program_counter + 2,
-            graphics: [0; Emulator::SCREEN_SIZE],
+            graphics: [Pixel::OFF; Emulator::SCREEN_SIZE],
             ..*emu
         },
         _ => ident(emu, value) //TODO: Implement
