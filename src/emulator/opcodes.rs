@@ -329,7 +329,7 @@ mod tests {
     /// Test that we can insert a value to a register and then compare against
     /// value to skip the instruction
     #[test]
-    fn skip_false() {
+    fn skip_false2() {
         let mut emu = Emulator::new();
         let pc = emu.program_counter; 
 
@@ -384,51 +384,11 @@ mod tests {
         emu.memory[pc] = 0x73;
         emu.memory[pc + 1] = 0x06;
 
-        // Process that instruction        emu.memory[pc] = 0x6A;
-        emu.memory[pc + 1] = 0x33;
-
-        // Skip the next instruction if register A is 33
-        emu.memory[pc + 2] = 0x3A;
-        emu.memory[pc + 3] = 0x33;
-        
-        // Set register A to 66
-        emu.memory[pc + 4] = 0x6A;
-        emu.memory[pc + 5] = 0x66;
-
-        for _ in 0..3 {
-            emu = emu.emulate_cycle();
-        }
-
-        // We have moved 3 instructions + one skipped instruction = 4 * 2 = 8
-        assert_eq!(pc + 8, emu.program_counter);
-
-        // Make sure that the last instruction didn't execute and that register A
-        // is still at the inital value we set
-        assert_eq!(0x33, emu.registers[0xA]);
-    }
-    
-    /// Test that we can insert a value to a register and then compare against
-    /// value to skip the instruction
-    #[test]
-    fn skip_false() {
-        let mut emu = Emulator::new();
-        let pc = emu.program_counter; 
-
-        // Set register A to A33
-        emu.memory[pc] = 0x6A;
-        emu.memory[pc + 1] = 0x33;
-
-        // Skip the next instruction if register A is not A34
-        emu.memory[pc + 2] = 0x4A;
-        emu.memory[pc + 3] = 0x34;
-        
-
         emu = emu.emulate_cycle();
 
-        // Make sure we have added to the register
         assert_eq!(11, emu.registers[3]);
     }
-
+    
     #[test]
     fn test_assign() {
         let mut emu = Emulator::new();
@@ -506,5 +466,23 @@ mod tests {
         // Make sure we have assigned to the register
         assert_eq!(0, emu.registers[x]);
         assert_eq!(1, emu.registers[0xF]);
+    }
+
+    #[test]
+    fn jump_to_address() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter;
+
+        emu.registers[0] = 5;
+
+        // Jump to the address ABC
+        emu.memory[pc] = 0xBA;
+        emu.memory[pc + 1] = 0xBC;
+
+        // Process that instruction
+        emu = emu.emulate_cycle();
+
+        // Make sure we have jumped to the address 0xABC + 5
+        assert_eq!(0xABC + 5, emu.program_counter);
     }
 }
