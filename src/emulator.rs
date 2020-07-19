@@ -12,7 +12,7 @@ pub struct Emulator {
     registers: [u8; 16],
     index_register: u16,
     program_counter: usize,
-    graphics: [u8; 64 * 32],
+    graphics: [u8; Emulator::SCREEN_SIZE],
     delay_timer: u8,
     sound_timer: u8,
     stack: [u16; 16],
@@ -20,6 +20,10 @@ pub struct Emulator {
 }
 
 impl Emulator {
+    const SCREEN_WIDTH: usize = 64;
+    const SCREEN_HEIGHT: usize = 32;
+    const SCREEN_SIZE: usize = Emulator::SCREEN_WIDTH * Emulator::SCREEN_HEIGHT;
+
     fn new() -> Emulator {
         Emulator {
             opcode: 0,
@@ -27,7 +31,7 @@ impl Emulator {
             registers: [0; 16],
             index_register: 0,
             program_counter: PROGRAM_LOC,
-            graphics: [0; 64 * 32],
+            graphics: [0; Emulator::SCREEN_SIZE],
             delay_timer: 0,
             sound_timer: 0,
             stack: [0; 16],

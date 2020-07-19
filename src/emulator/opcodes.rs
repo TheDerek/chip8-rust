@@ -13,6 +13,11 @@ pub fn system(emu: &Emulator, value: u16) -> Emulator {
     match value {
         // Return from subroutine
         0x0EE => return_from_subroutine(emu, value),
+        0x0E0 => Emulator {
+            program_counter: emu.program_counter + 2,
+            graphics: [0; Emulator::SCREEN_SIZE],
+            ..*emu
+        },
         _ => ident(emu, value) //TODO: Implement
     }
 }
@@ -523,5 +528,26 @@ mod tests {
 
         // Make sure that register 6 is random number <= 0x0F
         assert!(emu.registers[6] <= 0x0F);
+    }
+
+    #[test]
+    fn clear_screen() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter;
+
+        // Put some random stuff on the screen
+        emu.graphics[14] = 1;
+        emu.graphics[02] = 1;
+        emu.graphics[4] = 1;
+
+        // Clear the screen
+        emu.memory[pc] = 0x00;
+        emu.memory[pc + 1] = 0xE0;
+
+        // Process that instruction
+        emu = emu.emulate_cycle();
+
+        // Make sure that the screen is blank
+        assert_eq!(0, emu.graphics.iter().sum::<u8>());
     }
 }
