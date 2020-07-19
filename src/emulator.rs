@@ -66,6 +66,8 @@ impl Emulator {
             0x8 => opcodes::maths_ops,
             0x9 => opcodes::skip_not_equals,
             0xA => opcodes::set_index_register,
+            0xB => opcodes::goto_plus_register,
+            0xC => opcodes::rand,
             _   => opcodes::ident
         };
 

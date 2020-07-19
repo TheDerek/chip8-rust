@@ -193,6 +193,27 @@ fn minus_carry(x: u8, y: u8) -> (u8, u8) {
     (result as u8, 1)
 }
 
+pub fn goto_plus_register(emu: &Emulator, value: u16) -> Emulator {
+    Emulator {
+        program_counter: value as usize + emu.registers[0] as usize,
+        ..*emu
+    }
+}
+
+pub fn rand(emu: &Emulator, value: u16) -> Emulator {
+    let ix: usize = (value >> 8).into();
+    let nn = (value & 0x0FF) as u8;
+
+    let mut emu = Emulator {
+        program_counter: emu.program_counter + 2,
+        ..*emu
+    };
+
+    emu.registers[ix] = rand::random::<u8>() & nn;
+
+    emu
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -484,5 +505,23 @@ mod tests {
 
         // Make sure we have jumped to the address 0xABC + 5
         assert_eq!(0xABC + 5, emu.program_counter);
+    }
+
+    #[test]
+    fn rand() {
+        let mut emu = Emulator::new();
+        let pc = emu.program_counter;
+
+        emu.registers[6] = 0x1F;
+
+        // Put a random number into 6
+        emu.memory[pc] = 0xC6;
+        emu.memory[pc + 1] = 0x0F;
+
+        // Process that instruction
+        emu = emu.emulate_cycle();
+
+        // Make sure that register 6 is random number <= 0x0F
+        assert!(emu.registers[6] <= 0x0F);
     }
 }
