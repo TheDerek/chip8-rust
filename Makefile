@@ -1,5 +1,5 @@
 .PHONY: run
-run:
+run: test
 	cargo run
 
 .PHONY: test
