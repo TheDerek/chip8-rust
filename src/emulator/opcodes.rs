@@ -16,6 +16,7 @@ pub fn system(emu: &Emulator, value: u16) -> Emulator {
         0x0E0 => Emulator {
             program_counter: emu.program_counter + 2,
             graphics: [Pixel::OFF; Emulator::SCREEN_SIZE],
+            clear: true,
             ..*emu
         },
         _ => ident(emu, value) //TODO: Implement
@@ -222,6 +223,7 @@ pub fn rand(emu: &Emulator, value: u16) -> Emulator {
 pub fn draw(emu: &Emulator, value: u16) -> Emulator {
     let mut emu = Emulator {
         program_counter: emu.program_counter + 2,
+        draw: true,
         ..*emu
     };
 
@@ -242,6 +244,7 @@ pub fn draw(emu: &Emulator, value: u16) -> Emulator {
         flipped = flipped || emu.set_pixel(ix, iy);
     }
 
+    emu.registers[0xF] = if flipped { 1 } else { 0 };
     emu
 }
 
@@ -578,9 +581,9 @@ mod tests {
         let pc = emu.program_counter;
 
         // Put some random stuff on the screen
-        emu.graphics[14] = 1;
-        emu.graphics[02] = 1;
-        emu.graphics[4] = 1;
+        emu.graphics[14] = Pixel::ON;
+        emu.graphics[02] = Pixel::ON;
+        emu.graphics[4] = Pixel::ON;
 
         // Clear the screen
         emu.memory[pc] = 0x00;
@@ -590,6 +593,8 @@ mod tests {
         emu = emu.emulate_cycle();
 
         // Make sure that the screen is blank
-        assert_eq!(0, emu.graphics.iter().sum::<u8>());
+        for pixel in emu.graphics.iter() {
+            assert_eq!(Pixel::OFF, *pixel);
+        }
     }
 }

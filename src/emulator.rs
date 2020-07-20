@@ -6,7 +6,7 @@ use std::io::Read;
 // Where the program starts in memory
 const PROGRAM_LOC: usize = 0x200;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Pixel {
     ON,
     OFF
@@ -23,6 +23,8 @@ pub struct Emulator {
     sound_timer: u8,
     stack: [u16; 16],
     stack_pointer: usize,
+    draw: bool,
+    clear: bool
 }
 
 impl Emulator {
@@ -42,6 +44,8 @@ impl Emulator {
             sound_timer: 0,
             stack: [0; 16],
             stack_pointer: 0,
+            draw: false,
+            clear: false
         }
     }
 
@@ -92,6 +96,7 @@ impl Emulator {
             0xA => opcodes::set_index_register,
             0xB => opcodes::goto_plus_register,
             0xC => opcodes::rand,
+            0xD => opcodes::draw,
             _   => opcodes::ident
         };
 
