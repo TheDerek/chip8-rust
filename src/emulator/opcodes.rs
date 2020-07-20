@@ -219,6 +219,48 @@ pub fn rand(emu: &Emulator, value: u16) -> Emulator {
     emu
 }
 
+pub fn draw(emu: &Emulator, value: u16) -> Emulator {
+    let mut emu = Emulator {
+        program_counter: emu.program_counter + 2,
+        ..*emu
+    };
+
+    // value = 0xXYN
+    let x = value >> 8;
+    let y = (value >> 4) & 0x0F;
+    let w = 8;
+    let h = value & 0x00F;
+    let size = w * h;
+    let mut flipped: bool = false;
+
+    // Loop through our sprite
+    for i in emu.index_register..emu.index_register + size {
+        // the current index register + i is equivalent to these
+        // coordinates
+        let iy = y + (i / w);
+        let ix = x + (i - y * w);
+        flipped = flipped || emu.set_pixel(ix, iy);
+    }
+
+    emu
+}
+
+impl Emulator {
+    fn set_pixel(&mut self, x: u16, y: u16) -> bool {
+        let i = (y * Emulator::SCREEN_WIDTH + x) as usize;
+        match self.get_pixel(x, y) {
+            Pixel::ON => {
+                self.graphics[i] = Pixel::OFF;
+                true
+            }
+            Pixel::OFF => {
+                self.graphics[i] = Pixel::ON;
+                false
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
