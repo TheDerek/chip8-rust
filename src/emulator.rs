@@ -26,8 +26,8 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub const SCREEN_WIDTH: u32 = 64;
-    pub const SCREEN_HEIGHT: u32 = 32;
+    pub const SCREEN_WIDTH: u16 = 64;
+    pub const SCREEN_HEIGHT: u16 = 32;
     const SCREEN_SIZE: usize = (Emulator::SCREEN_WIDTH * Emulator::SCREEN_HEIGHT) as usize;
 
     fn new() -> Emulator {
@@ -65,7 +65,7 @@ impl Emulator {
         emu
     }
 
-    pub fn get_pixel(&self, x: u32, y: u32) -> Pixel {
+    pub fn get_pixel(&self, x: u16, y: u16) -> Pixel {
        self.graphics[((y * Emulator::SCREEN_WIDTH) + x) as usize]
     }
 

@@ -10,9 +10,9 @@ use std::time::Duration;
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels::Color;
 
-const SCALE: u32 = 20;
-const SCREEN_WIDTH: u32 = Emulator::SCREEN_WIDTH * SCALE;
-const SCREEN_HEIGHT: u32 = Emulator::SCREEN_HEIGHT * SCALE;
+const SCALE: u16 = 20;
+const SCREEN_WIDTH: u16 = Emulator::SCREEN_WIDTH * SCALE;
+const SCREEN_HEIGHT: u16 = Emulator::SCREEN_HEIGHT * SCALE;
 
 fn main() -> Result<(), String> {
     let emu = Emulator::load("data/helloworld.bin");
@@ -22,7 +22,7 @@ fn main() -> Result<(), String> {
 
     let sdl_context = sdl2::init()?;
     let video_subsys = sdl_context.video()?;
-    let window = video_subsys.window("Derek's Chip8 Emulator", SCREEN_WIDTH, SCREEN_HEIGHT)
+    let window = video_subsys.window("Derek's Chip8 Emulator", SCREEN_WIDTH.into(), SCREEN_HEIGHT.into())
         .position_centered()
         .opengl()
         .build()
