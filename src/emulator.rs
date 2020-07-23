@@ -2,6 +2,7 @@ mod opcodes;
 
 use std::fs::File;
 use std::io::Read;
+use std::ops::Not;
 
 // Where the program starts in memory
 const PROGRAM_LOC: usize = 0x200;
@@ -12,12 +13,23 @@ pub enum Pixel {
     OFF
 }
 
+impl Not for Pixel {
+    type Output = Pixel;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Pixel::ON => Pixel::OFF,
+            Pixel::OFF => Pixel::ON
+        }
+    }
+}
+
 pub struct Emulator {
     opcode: u16,
-    memory: [u8; 4096],
+    pub memory: [u8; 4096],
     registers: [u8; 16],
     index_register: u16,
-    program_counter: usize,
+    pub program_counter: usize,
     graphics: [Pixel; Emulator::SCREEN_SIZE],
     delay_timer: u8,
     sound_timer: u8,
@@ -32,7 +44,7 @@ impl Emulator {
     pub const SCREEN_HEIGHT: u16 = 32;
     const SCREEN_SIZE: usize = (Emulator::SCREEN_WIDTH * Emulator::SCREEN_HEIGHT) as usize;
 
-    fn new() -> Emulator {
+    pub fn new() -> Emulator {
         Emulator {
             opcode: 0,
             memory: [0; 4096],
@@ -58,14 +70,6 @@ impl Emulator {
         let mut emu = Emulator::new();
         emu.memory = buf;
 
-        for i in 0..Emulator::SCREEN_SIZE {
-            if i % 3 != 0 {
-                continue;
-            }
-
-            emu.graphics[i] = Pixel::ON;
-        }
-
         emu
     }
 
@@ -81,6 +85,12 @@ impl Emulator {
     pub fn emulate_cycle(&self) -> Emulator {
         let opcode = self.get_opcode();
         let (instruction, value) = Emulator::deconstruct_opcode(opcode);
+
+        let emu = Emulator {
+            draw: false,
+            clear: false,
+            ..*self
+        };
 
         let run = match instruction {
             0x0 => opcodes::system,
@@ -100,7 +110,7 @@ impl Emulator {
             _   => opcodes::ident
         };
 
-        return run(&self, value)
+        return run(&emu, value)
     }
 
     fn deconstruct_opcode(opcode: u16) -> (u8, u16) {

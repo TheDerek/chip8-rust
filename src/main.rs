@@ -14,8 +14,35 @@ const SCALE: u16 = 20;
 const SCREEN_WIDTH: u16 = Emulator::SCREEN_WIDTH * SCALE;
 const SCREEN_HEIGHT: u16 = Emulator::SCREEN_HEIGHT * SCALE;
 
+fn load_emu() -> Emulator {
+    let mut emu = Emulator::new();
+    let pc = emu.program_counter;
+    emu.memory[pc + 0] = 0x60;
+    emu.memory[pc + 1] = 0x20;
+
+    emu.memory[pc + 2] = 0x61;
+    emu.memory[pc + 3] = 0x10;
+
+    emu.memory[pc + 4] = 0xA2;
+    emu.memory[pc + 5] = 0x08;
+
+    emu.memory[pc + 6] = 0xD0;
+    emu.memory[pc + 7] = 0x13;
+
+    emu.memory[pc + 8] = 0x3C;
+    emu.memory[pc + 9] = 0xC3;
+    emu.memory[pc + 10] = 0xFF;
+
+    for _ in 0..4 {
+        emu = emu.emulate_cycle();
+    }
+
+    emu
+}
+
 fn main() -> Result<(), String> {
-    let emu = Emulator::load("data/helloworld.bin");
+    let emu = load_emu();
+    let emu = emu.emulate_cycle();
 
     let white: Color = Color::RGB(255, 255, 255);
     let black: Color = Color::RGB(0, 0, 0);

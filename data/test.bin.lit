@@ -1,0 +1,13 @@
+// Set the sprites coordinates to (32, 16) with X being stored in the V0 and y in V1
+200: 6020
+202: 6110
+
+// Set the position of the index register I
+204: A208
+
+// Draw the sprite located at I at position (V0, V1) with height 3
+206: D013
+
+// The sprite itself
+208: 3CC3
+20A: FF00

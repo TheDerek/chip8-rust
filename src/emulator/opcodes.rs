@@ -1,6 +1,6 @@
 use crate::emulator::*;
 
-/// Dose nothing but skip the next instruction. Used for instructions not implemnted yet
+/// Does nothing but skip the next instruction. Used for instructions not implemnted yet
 pub fn ident(emu: &Emulator, _: u16) -> Emulator {
     Emulator {
         program_counter: emu.program_counter + 2,
@@ -230,18 +230,27 @@ pub fn draw(emu: &Emulator, value: u16) -> Emulator {
     // value = 0xXYN
     let x = value >> 8;
     let y = (value >> 4) & 0x0F;
+    let x = emu.registers[x as usize] as u16;
+    let y = emu.registers[y as usize] as u16;
     let w = 8;
     let h = value & 0x00F;
     let size = w * h;
     let mut flipped: bool = false;
 
-    // Loop through our sprite
-    for i in emu.index_register..emu.index_register + size {
-        // the current index register + i is equivalent to these
-        // coordinates
-        let iy = y + (i / w);
-        let ix = x + (i - y * w);
-        flipped = flipped || emu.set_pixel(ix, iy);
+    for yline in 0..h {
+        // Each byte is a line
+        let line = emu.memory[(emu.index_register + yline) as usize];
+
+        // For every bit in the line
+        for xline in 0..8 {
+            // Get the most significant bit and check if it is 1
+            let pixel = match ((line >> xline) & 0x01) == 1 {
+                true => Pixel::ON,
+                false => Pixel::OFF
+            };
+
+            flipped = flipped || emu.set_pixel(x + (8 - xline), y + yline, pixel);
+        }
     }
 
     emu.registers[0xF] = if flipped { 1 } else { 0 };
@@ -249,18 +258,16 @@ pub fn draw(emu: &Emulator, value: u16) -> Emulator {
 }
 
 impl Emulator {
-    fn set_pixel(&mut self, x: u16, y: u16) -> bool {
+    fn set_pixel(&mut self, x: u16, y: u16, pixel: Pixel) -> bool {
         let i = (y * Emulator::SCREEN_WIDTH + x) as usize;
-        match self.get_pixel(x, y) {
-            Pixel::ON => {
-                self.graphics[i] = Pixel::OFF;
-                true
-            }
-            Pixel::OFF => {
-                self.graphics[i] = Pixel::ON;
-                false
-            }
+
+        if self.graphics[i] != pixel {
+            let flipped_to_unset = self.graphics[i] == Pixel::ON;
+            self.graphics[i] = !self.graphics[i];
+            return flipped_to_unset;
         }
+
+        return false;
     }
 }
 
