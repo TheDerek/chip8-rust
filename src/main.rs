@@ -34,7 +34,7 @@ fn load_emu() -> Emulator {
     emu.memory[pc + 10] = 0xFF;
 
     for _ in 0..4 {
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
     }
 
     emu
@@ -42,7 +42,6 @@ fn load_emu() -> Emulator {
 
 fn main() -> Result<(), String> {
     let emu = load_emu();
-    let emu = emu.emulate_cycle();
 
     let white: Color = Color::RGB(255, 255, 255);
     let black: Color = Color::RGB(0, 0, 0);

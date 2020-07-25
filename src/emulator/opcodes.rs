@@ -1,97 +1,75 @@
 use crate::emulator::*;
 
 /// Does nothing but skip the next instruction. Used for instructions not implemnted yet
-pub fn ident(emu: &Emulator, _: u16) -> Emulator {
-    Emulator {
-        program_counter: emu.program_counter + 2,
-        ..*emu
-    }
+pub fn ident(emu: &mut Emulator, _: u16) {
+    emu.program_counter += 2;
 }
 
 /// Manages the 0x0FFF opcodes
-pub fn system(emu: &Emulator, value: u16) -> Emulator {
+pub fn system(emu: &mut Emulator, value: u16) {
     match value {
         // Return from subroutine
         0x0EE => return_from_subroutine(emu, value),
-        0x0E0 => Emulator {
-            program_counter: emu.program_counter + 2,
-            graphics: [Pixel::OFF; Emulator::SCREEN_SIZE],
-            clear: true,
-            ..*emu
+        0x0E0 => {
+            emu.program_counter += 2;
+            emu.graphics = [Pixel::OFF; Emulator::SCREEN_SIZE];
+            emu.clear = true;
         },
         _ => ident(emu, value) //TODO: Implement
-    }
+    };
 }
 
-fn return_from_subroutine(emu: &Emulator, _: u16) -> Emulator {
+fn return_from_subroutine(emu: &mut Emulator, _: u16) {
     // The new stack pointer that contains the location of the code we are
     // going to jump back to
-    let stack_pointer = emu.stack_pointer -1;
-    Emulator {
-        stack_pointer,
-        program_counter: (emu.stack[stack_pointer] + 2) as usize,
-        ..*emu
-    }
+    emu.stack_pointer -= 1;
+    emu.program_counter = (emu.stack[emu.stack_pointer] + 2) as usize;
 }
 
-pub fn goto(emu: &Emulator, value: u16) -> Emulator {
-    Emulator {
-        program_counter: value.into(),
-        ..*emu
-    }
+pub fn goto(emu: &mut Emulator, value: u16) {
+    emu.program_counter = value.into();
 }
 
-pub fn call_subroutine(emu: &Emulator, value: u16) -> Emulator {
-    let mut emu = Emulator {
-        ..*emu
-    };
-
+pub fn call_subroutine(emu: &mut Emulator, value: u16) {
     emu.stack[emu.stack_pointer] = emu.program_counter as u16;
     emu.stack_pointer += 1;
     emu.program_counter = value.into();
-    emu
 }
 
 /// Skips the next instruction if VX equals NN
-pub fn skip_true(emu: &Emulator, value: u16) -> Emulator {
+pub fn skip_true(emu: &mut Emulator, value: u16) {
     let reg_loc = (value >> 8) as usize;
     let expected_reg_value = (value & 0x0FF) as u8;
 
     let should_skip = emu.registers[reg_loc] == expected_reg_value;
     let pc_delta = if should_skip { 4 } else { 2 };
 
-    Emulator {
-        program_counter: emu.program_counter + pc_delta,
-        ..*emu
-    }
+    emu.program_counter = emu.program_counter + pc_delta;
 }
 
 /// Skips the next instruction if VX does not equal NN
-pub fn skip_false(emu: &Emulator, value: u16) -> Emulator {
+pub fn skip_false(emu: &mut Emulator, value: u16) {
     let reg_loc = (value >> 8) as usize;
     let expected_reg_value = (value & 0x0FF) as u8;
 
     let should_skip = emu.registers[reg_loc] != expected_reg_value;
     let pc_delta = if should_skip { 4 } else { 2 };
 
-    Emulator {
-        program_counter: emu.program_counter + pc_delta,
-        ..*emu
-    }
+    emu.program_counter = emu.program_counter + pc_delta;
 }
 
 /// Skips the next instruction if VX equals VY
-pub fn skip_equals(emu: &Emulator, value: u16) -> Emulator {
-    skip_condition(|x, y| { x == y })(emu, value)
+pub fn skip_equals(emu: &mut Emulator, value: u16) {
+    skip_condition(|x, y| { x == y })(emu, value);
 }
 
 /// Skips the next instruction if VX does not equal VY
-pub fn skip_not_equals(emu: &Emulator, value: u16) -> Emulator {
-    skip_condition(|x, y| { x != y })(emu, value)
+pub fn skip_not_equals(emu: &mut Emulator, value: u16) {
+    skip_condition(|x, y| { x != y })(emu, value);
 }
 
-pub fn skip_condition(condition: fn(u8, u8) -> bool) -> Box<dyn Fn(&Emulator, u16) -> Emulator> {
-    Box::new(move |emu: &Emulator, value: u16| -> Emulator {
+pub fn skip_condition(condition: fn(u8, u8) -> bool) -> Box<dyn Fn(&mut Emulator, u16)> {
+    Box::new(move |emu: &mut Emulator, value: u16| {
         // 5XY0
         let x = (value >> 8) as usize;
         let y = ((value & 0x0F0) >> 4) as usize;
@@ -102,56 +80,37 @@ pub fn skip_condition(condition: fn(u8, u8) -> bool) -> Box<dyn Fn(&Emulator, u1
             pc_inc += 2;
         }
 
-        Emulator {
-            program_counter: emu.program_counter + pc_inc,
-            ..*emu
-        }
+        emu.program_counter = emu.program_counter + pc_inc;
     })
 }
 
-pub fn set_register(emu: &Emulator, value: u16) -> Emulator {
+pub fn set_register(emu: &mut Emulator, value: u16) {
     let reg_loc = (value >> 8) as usize;
     let new_reg_value = (value & 0x0FF) as u8;
 
-    let mut emu = Emulator {
-        program_counter: emu.program_counter + 2,
-        ..*emu
-    };
 
     emu.registers[reg_loc] = new_reg_value;
-    emu
+    emu.program_counter += 2;
 }
 
-pub fn add_to_register(emu: &Emulator, value: u16) -> Emulator {
+pub fn add_to_register(emu: &mut Emulator, value: u16) {
     let reg_loc = (value >> 8) as usize;
     let reg_inc = (value & 0x0FF) as u8;
 
-    let mut emu = Emulator {
-        program_counter: emu.program_counter + 2,
-        ..*emu
-    };
-
     emu.registers[reg_loc] += reg_inc;
-    emu
+    emu.program_counter += 2;
 }
 
-pub fn set_index_register(emu: &Emulator, value: u16) -> Emulator {
-    Emulator {
-        index_register: value,
-        program_counter: emu.program_counter + 2,
-        ..*emu
-    }
+pub fn set_index_register(emu: &mut Emulator, value: u16) {
+    emu.index_register = value;
+    emu.program_counter += 2;
 }
 
 /// Various bitwise and mathmatical operations for 0x8***
-pub fn maths_ops(emu: &Emulator, value: u16) -> Emulator {
+pub fn maths_ops(emu: &mut Emulator, value: u16) {
     let secondary_instruction = (value & 0x00F) as u8;
     let ix = (value >> 8) as usize;
     let iy = ((value & 0x0F0) >> 4) as usize;
-
-    let mut emu = Emulator {
-        ..*emu
-    };
 
     let x = emu.registers[ix];
     let f = emu.registers[0xF];
@@ -173,8 +132,6 @@ pub fn maths_ops(emu: &Emulator, value: u16) -> Emulator {
 
     emu.registers[ix] = x;
     emu.registers[0xF] = f;
-
-    emu
 }
 
 /// Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
@@ -199,33 +156,21 @@ fn minus_carry(x: u8, y: u8) -> (u8, u8) {
     (result as u8, 1)
 }
 
-pub fn goto_plus_register(emu: &Emulator, value: u16) -> Emulator {
-    Emulator {
-        program_counter: value as usize + emu.registers[0] as usize,
-        ..*emu
-    }
+pub fn goto_plus_register(emu: &mut Emulator, value: u16) {
+    emu.program_counter = value as usize + emu.registers[0] as usize;
 }
 
-pub fn rand(emu: &Emulator, value: u16) -> Emulator {
+pub fn rand(emu: &mut Emulator, value: u16) {
     let ix: usize = (value >> 8).into();
     let nn = (value & 0x0FF) as u8;
 
-    let mut emu = Emulator {
-        program_counter: emu.program_counter + 2,
-        ..*emu
-    };
-
     emu.registers[ix] = rand::random::<u8>() & nn;
-
-    emu
+    emu.program_counter += 2;
 }
 
-pub fn draw(emu: &Emulator, value: u16) -> Emulator {
-    let mut emu = Emulator {
-        program_counter: emu.program_counter + 2,
-        draw: true,
-        ..*emu
-    };
+pub fn draw(emu: &mut Emulator, value: u16) {
+    emu.program_counter += 2;
+    emu.draw = true;
 
     // value = 0xXYN
     let x = value >> 8;
@@ -254,7 +199,6 @@ pub fn draw(emu: &Emulator, value: u16) -> Emulator {
     }
 
     emu.registers[0xF] = if flipped { 1 } else { 0 };
-    emu
 }
 
 impl Emulator {
@@ -282,7 +226,7 @@ mod tests {
         emu.memory[emu.program_counter] = 0xA2;
         emu.memory[emu.program_counter + 1] = 0x10;
 
-        let emu = emu.emulate_cycle();
+        emu.emulate_cycle();
         assert_eq!(emu.index_register, new_index_reg);
     }
 
@@ -308,7 +252,7 @@ mod tests {
         emu.memory[subroutine_loc + 3] = 0xEE;
 
         for _ in 0..3 {
-            emu = emu.emulate_cycle();
+            emu.emulate_cycle();
         }
 
         // Make sure we are on the second instruction
@@ -336,7 +280,7 @@ mod tests {
         emu.memory[pc + 5] = 0x66;
 
         for _ in 0..3 {
-            emu = emu.emulate_cycle();
+            emu.emulate_cycle();
         }
 
         // We have moved 3 instructions + one skipped instruction = 4 * 2 = 8
@@ -367,7 +311,7 @@ mod tests {
         emu.memory[pc + 5] = 0x66;
 
         for _ in 0..3 {
-            emu = emu.emulate_cycle();
+            emu.emulate_cycle();
         }
 
         // We have moved 3 instructions + one skipped instruction = 4 * 2 = 8
@@ -393,7 +337,7 @@ mod tests {
         emu.memory[pc + 5] = 0x66;
 
         for _ in 0..3 {
-            emu = emu.emulate_cycle();
+            emu.emulate_cycle();
         }
 
         // We have moved 3 instructions + one skipped instruction = 4 * 2 = 8
@@ -428,7 +372,7 @@ mod tests {
         emu.memory[pc + 1] = 0x30;
 
         // Process that instruction
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
 
         // Make sure we have skipped ahead two instructions
         assert_eq!(emu.program_counter, pc + 4);
@@ -446,7 +390,7 @@ mod tests {
         emu.memory[pc + 1] = 0x30;
 
         // Process that instruction
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
 
         // Make sure we have skipped ahead two instructions
         assert_eq!(emu.program_counter, pc + 4);
@@ -462,7 +406,7 @@ mod tests {
         emu.memory[pc] = 0x73;
         emu.memory[pc + 1] = 0x06;
 
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
 
         assert_eq!(11, emu.registers[3]);
     }
@@ -481,7 +425,7 @@ mod tests {
         emu.memory[pc + 1] = 0x30;
 
         // Process that instruction
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
 
         // Make sure we have assigned to the register
         assert_eq!(5, emu.registers[x]);
@@ -519,7 +463,7 @@ mod tests {
         emu.memory[pc + 1] = 0x06;
 
         // Process that instruction
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
 
         // Make sure we have assigned to the register
         assert_eq!(0, emu.registers[x]);
@@ -539,7 +483,7 @@ mod tests {
         emu.memory[pc + 1] = 0x0E;
 
         // Process that instruction
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
 
         // Make sure we have assigned to the register
         assert_eq!(0, emu.registers[x]);
@@ -558,7 +502,7 @@ mod tests {
         emu.memory[pc + 1] = 0xBC;
 
         // Process that instruction
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
 
         // Make sure we have jumped to the address 0xABC + 5
         assert_eq!(0xABC + 5, emu.program_counter);
@@ -576,7 +520,7 @@ mod tests {
         emu.memory[pc + 1] = 0x0F;
 
         // Process that instruction
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
 
         // Make sure that register 6 is random number <= 0x0F
         assert!(emu.registers[6] <= 0x0F);
@@ -597,7 +541,7 @@ mod tests {
         emu.memory[pc + 1] = 0xE0;
 
         // Process that instruction
-        emu = emu.emulate_cycle();
+        emu.emulate_cycle();
 
         // Make sure that the screen is blank
         for pixel in emu.graphics.iter() {

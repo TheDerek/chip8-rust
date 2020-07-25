@@ -82,15 +82,9 @@ impl Emulator {
             | self.memory[self.program_counter + 1] as u16
     }
 
-    pub fn emulate_cycle(&self) -> Emulator {
+    pub fn emulate_cycle(&mut self) {
         let opcode = self.get_opcode();
         let (instruction, value) = Emulator::deconstruct_opcode(opcode);
-
-        let emu = Emulator {
-            draw: false,
-            clear: false,
-            ..*self
-        };
 
         let run = match instruction {
             0x0 => opcodes::system,
@@ -110,7 +104,7 @@ impl Emulator {
             _   => opcodes::ident
         };
 
-        return run(&emu, value)
+        run(self, value);
     }
 
     fn deconstruct_opcode(opcode: u16) -> (u8, u16) {
