@@ -1,5 +1,6 @@
 mod opcodes;
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::ops::Not;
@@ -11,6 +12,11 @@ const PROGRAM_LOC: usize = 0x200;
 pub enum Pixel {
     ON,
     OFF
+}
+
+pub enum KeyState {
+    DOWN,
+    UP
 }
 
 impl Not for Pixel {
@@ -35,6 +41,7 @@ pub struct Emulator {
     sound_timer: u8,
     stack: [u16; 16],
     stack_pointer: usize,
+    keys: HashMap<u8, KeyState>,
     draw: bool,
     clear: bool
 }
@@ -56,6 +63,7 @@ impl Emulator {
             sound_timer: 0,
             stack: [0; 16],
             stack_pointer: 0,
+            keys: HashMap::new(),
             draw: false,
             clear: false
         }
@@ -75,11 +83,6 @@ impl Emulator {
 
     pub fn get_pixel(&self, x: u16, y: u16) -> Pixel {
        self.graphics[((y * Emulator::SCREEN_WIDTH) + x) as usize]
-    }
-
-    fn get_opcode(&self) -> u16 {
-        (self.memory[self.program_counter] as u16) << 8
-            | self.memory[self.program_counter + 1] as u16
     }
 
     pub fn emulate_cycle(&mut self) {
@@ -105,6 +108,15 @@ impl Emulator {
         };
 
         run(self, value);
+    }
+
+    pub fn set_key(&mut self, key: u8, state: KeyState) {
+        self.keys.insert(key, state);
+    }
+
+    fn get_opcode(&self) -> u16 {
+        (self.memory[self.program_counter] as u16) << 8
+            | self.memory[self.program_counter + 1] as u16
     }
 
     fn deconstruct_opcode(opcode: u16) -> (u8, u16) {

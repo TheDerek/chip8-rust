@@ -40,8 +40,38 @@ fn load_emu() -> Emulator {
     emu
 }
 
+fn emu_keypress(emu: &mut Emulator, keycode: Keycode, state: emulator::KeyState) {
+    let key: Option<u8> = match keycode {
+        Keycode::Num1 => Some(0x1),
+        Keycode::Num2 => Some(0x2),
+        Keycode::Num3 => Some(3),
+        Keycode::Num4 => Some(0xC),
+        Keycode::Q => Some(0x4),
+        Keycode::W => Some(0x5),
+        Keycode::E => Some(0x6),
+        Keycode::R => Some(0xD),
+        Keycode::A => Some(0x7),
+        Keycode::S => Some(0x8),
+        Keycode::D => Some(0x9),
+        Keycode::F => Some(0xE),
+        Keycode::Z => Some(0xA),
+        Keycode::X => Some(0x0),
+        Keycode::C => Some(0xB),
+        Keycode::V => Some(0xF),
+        _ => None
+    };
+
+    match key {
+        Some(key) => {
+            println!("{:?} = {:x} key pressed", keycode, key);
+            emu.set_key(key, state);
+        },
+        None => ()
+    }
+}
+
 fn main() -> Result<(), String> {
-    let emu = load_emu();
+    let mut emu = load_emu();
 
     let white: Color = Color::RGB(255, 255, 255);
     let black: Color = Color::RGB(0, 0, 0);
@@ -71,6 +101,17 @@ fn main() -> Result<(), String> {
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'main
                 },
+                // Send the rest of the keypresses to the emulator
+                Event::KeyDown { keycode: Some(keycode), .. } => emu_keypress(
+                    &mut emu,
+                    keycode,
+                    emulator::KeyState::DOWN
+                ),
+                Event::KeyUp { keycode: Some(keycode), .. } => emu_keypress(
+                    &mut emu,
+                    keycode,
+                    emulator::KeyState::UP
+                ),
                 _ => {}
             }
         }
