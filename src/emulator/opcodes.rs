@@ -201,7 +201,15 @@ pub fn draw(emu: &mut Emulator, value: u16) {
     emu.registers[0xF] = if flipped { 1 } else { 0 };
 }
 
-pub fn skip_if_pressed(emu: &mut Emulator, value: u16) {
+pub fn skip_pressed(emu: &mut Emulator, value: u16) {
+    (match value & 0x0FF {
+        0x9E => skip_if_pressed,
+        0xAE => skip_if_not_pressed,
+        _ => ident
+    })(emu, value);
+}
+
+fn skip_if_pressed(emu: &mut Emulator, value: u16) {
     let x = value >> 8;
 
     match emu.keys.get(&(x as u8)) {
@@ -210,7 +218,7 @@ pub fn skip_if_pressed(emu: &mut Emulator, value: u16) {
     }
 }
 
-pub fn skip_if_not_pressed(emu: &mut Emulator, value: u16) {
+fn skip_if_not_pressed(emu: &mut Emulator, value: u16) {
     let x = value >> 8;
 
     match emu.keys.get(&(x as u8)) {
@@ -219,7 +227,7 @@ pub fn skip_if_not_pressed(emu: &mut Emulator, value: u16) {
     }
 }
 
-pub fn wait_for_keypress(emu: &mut Emulator, value: u16) {
+fn wait_for_keypress(emu: &mut Emulator, value: u16) {
     let x = value >> 8;
     let key: Option<&KeyState> = emu.keys.get(&(x as u8));
 

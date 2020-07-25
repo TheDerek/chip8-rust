@@ -111,6 +111,7 @@ impl Emulator {
             0xB => opcodes::goto_plus_register,
             0xC => opcodes::rand,
             0xD => opcodes::draw,
+            0xE => opcodes::skip_pressed,
             _   => opcodes::ident
         };
 
