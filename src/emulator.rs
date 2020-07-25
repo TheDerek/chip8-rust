@@ -14,6 +14,7 @@ pub enum Pixel {
     OFF
 }
 
+#[derive(Debug)]
 pub enum KeyState {
     DOWN,
     UP
@@ -52,7 +53,7 @@ impl Emulator {
     const SCREEN_SIZE: usize = (Emulator::SCREEN_WIDTH * Emulator::SCREEN_HEIGHT) as usize;
 
     pub fn new() -> Emulator {
-        Emulator {
+        let mut emu = Emulator {
             opcode: 0,
             memory: [0; 4096],
             registers: [0; 16],
@@ -66,7 +67,13 @@ impl Emulator {
             keys: HashMap::new(),
             draw: false,
             clear: false
+        };
+
+        for i in 0x0..0x10 {
+            emu.keys.insert(i, KeyState::UP);
         }
+
+        emu
     }
 
     pub fn load(path: &str) -> Emulator {

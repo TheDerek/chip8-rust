@@ -63,7 +63,7 @@ fn emu_keypress(emu: &mut Emulator, keycode: Keycode, state: emulator::KeyState)
 
     match key {
         Some(key) => {
-            println!("{:?} = {:x} key pressed", keycode, key);
+            println!("{:?} = 0x{:x} key pressed {:?}", keycode, key, state);
             emu.set_key(key, state);
         },
         None => ()

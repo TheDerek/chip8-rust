@@ -201,6 +201,39 @@ pub fn draw(emu: &mut Emulator, value: u16) {
     emu.registers[0xF] = if flipped { 1 } else { 0 };
 }
 
+pub fn skip_if_pressed(emu: &mut Emulator, value: u16) {
+    let x = value >> 8;
+
+    match emu.keys.get(&(x as u8)) {
+        Some(KeyState::DOWN) => emu.program_counter += 4,
+        _ => emu.program_counter += 2
+    }
+}
+
+pub fn skip_if_not_pressed(emu: &mut Emulator, value: u16) {
+    let x = value >> 8;
+
+    match emu.keys.get(&(x as u8)) {
+        Some(KeyState::UP) => emu.program_counter += 4,
+        _ => emu.program_counter += 2
+    }
+}
+
+pub fn wait_for_keypress(emu: &mut Emulator, value: u16) {
+    let x = value >> 8;
+    let key: Option<&KeyState> = emu.keys.get(&(x as u8));
+
+    // Wait for the key to be pressed
+    loop {
+        match key {
+            Some(KeyState::DOWN) => break,
+            _ => ()
+        }
+    }
+    
+    emu.program_counter += 2;
+}
+
 impl Emulator {
     fn set_pixel(&mut self, x: u16, y: u16, pixel: Pixel) -> bool {
         let i = (y * Emulator::SCREEN_WIDTH + x) as usize;
