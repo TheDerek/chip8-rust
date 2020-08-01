@@ -1,10 +1,5 @@
 use crate::emulator::*;
 
-/// Does nothing but skip the next instruction. Used for instructions not implemnted yet
-pub fn ident(emu: &mut Emulator, _: u16) {
-    emu.program_counter += 2;
-}
-
 /// Manages the 0x0FFF opcodes
 pub fn system(emu: &mut Emulator, value: u16) {
     match value {
@@ -15,7 +10,7 @@ pub fn system(emu: &mut Emulator, value: u16) {
             emu.graphics = [Pixel::OFF; Emulator::SCREEN_SIZE];
             emu.clear = true;
         },
-        _ => ident(emu, value) //TODO: Implement
+        _ => panic!("No instruction for 0x0{:X}", value)
     };
 }
 
@@ -204,8 +199,8 @@ pub fn draw(emu: &mut Emulator, value: u16) {
 pub fn skip_pressed(emu: &mut Emulator, value: u16) {
     (match value & 0x0FF {
         0x9E => skip_if_pressed,
-        0xAE => skip_if_not_pressed,
-        _ => ident
+        0xA1 => skip_if_not_pressed,
+        _ => panic!("No instruction for 0xE{:X}", value)
     })(emu, value);
 }
 
@@ -366,6 +361,10 @@ mod tests {
         emu.memory[pc + 4] = 0x6A;
         emu.memory[pc + 5] = 0x66;
 
+        // Set register B to 66
+        emu.memory[pc + 6] = 0x6B;
+        emu.memory[pc + 7] = 0x66;
+
         for _ in 0..3 {
             emu.emulate_cycle();
         }
@@ -397,6 +396,10 @@ mod tests {
         emu.memory[pc + 4] = 0x6A;
         emu.memory[pc + 5] = 0x66;
 
+        // Set register B to 66
+        emu.memory[pc + 6] = 0x6B;
+        emu.memory[pc + 7] = 0x66;
+
         for _ in 0..3 {
             emu.emulate_cycle();
         }
@@ -422,6 +425,10 @@ mod tests {
         // Set register A to 66
         emu.memory[pc + 4] = 0x6A;
         emu.memory[pc + 5] = 0x66;
+
+        // Set register B to 66
+        emu.memory[pc + 6] = 0x6B;
+        emu.memory[pc + 7] = 0x66;
 
         for _ in 0..3 {
             emu.emulate_cycle();
@@ -462,7 +469,7 @@ mod tests {
         emu.emulate_cycle();
 
         // Make sure we have skipped ahead two instructions
-        assert_eq!(emu.program_counter, pc + 4);
+       assert_eq!(emu.program_counter, pc + 4);
     }
 
     #[test]

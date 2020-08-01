@@ -194,7 +194,7 @@ impl Emulator {
             0xD => opcodes::draw,
             0xE => opcodes::skip_pressed,
             0xF => opcodes::misc_opcodes,
-            _   => opcodes::ident
+            _   => panic!("Missed opcoded {:x}", opcode)
         };
 
         run(self, value);
