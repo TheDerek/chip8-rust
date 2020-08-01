@@ -7,6 +7,25 @@ use std::ops::Not;
 
 // Where the program starts in memory
 const PROGRAM_LOC: usize = 0x200;
+const FONTSET_LOC: u16 = 0x050;
+const FONTSET: [u8; 5 * 16] = [
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+];
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Pixel {
@@ -43,6 +62,8 @@ pub struct Emulator {
     stack: [u16; 16],
     stack_pointer: usize,
     keys: HashMap<u8, KeyState>,
+    number_of_keys_pressed: i32,
+    last_key_pressed: u8,
     draw: bool,
     clear: bool
 }
@@ -65,12 +86,20 @@ impl Emulator {
             stack: [0; 16],
             stack_pointer: 0,
             keys: HashMap::new(),
+            number_of_keys_pressed: 0,
+            last_key_pressed: 0,
             draw: false,
             clear: false
         };
 
+        // Insert all the keys as currently unpressed
         for i in 0x0..0x10 {
             emu.keys.insert(i, KeyState::UP);
+        }
+
+        // Install the fontset in memory
+        for i in 0..FONTSET.len() {
+            emu.memory[FONTSET_LOC as usize + i] = FONTSET[i];
         }
 
         emu
@@ -112,6 +141,7 @@ impl Emulator {
             0xC => opcodes::rand,
             0xD => opcodes::draw,
             0xE => opcodes::skip_pressed,
+            0xF => opcodes::misc_opcodes,
             _   => opcodes::ident
         };
 
@@ -119,6 +149,20 @@ impl Emulator {
     }
 
     pub fn set_key(&mut self, key: u8, state: KeyState) {
+        match state {
+            KeyState::UP => self.number_of_keys_pressed -= 1,
+            KeyState::DOWN => {
+                self.number_of_keys_pressed += 1;
+                self.last_key_pressed = key;
+            }
+        };
+
+        // Should prevent negative keys being pressed if a key was pressed
+        // before the program was started
+        if self.number_of_keys_pressed < 0 {
+            self.number_of_keys_pressed = 0;
+        }
+
         self.keys.insert(key, state);
     }
 

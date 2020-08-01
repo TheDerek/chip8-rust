@@ -115,7 +115,7 @@ pub fn maths_ops(emu: &mut Emulator, value: u16) {
     let x = emu.registers[ix];
     let f = emu.registers[0xF];
     let y = emu.registers[iy];
-    
+
     // These operations both set Vx and Vf
     let (x, f) = match secondary_instruction {
         0x0 => (y, f),
@@ -227,6 +227,41 @@ fn skip_if_not_pressed(emu: &mut Emulator, value: u16) {
     }
 }
 
+/// Misc opcodes starting with F
+pub fn misc_opcodes(emu: &mut Emulator, value: u16) {
+    let x = value >> 8;
+    let xi = x as usize;
+    let instruction = (value & 0x0FF) as u8;
+
+    match instruction {
+        // Set VX to the value of the delay timer
+        0x07 => emu.registers[xi] = emu.delay_timer,
+        // Wait for any keypress and then store it in vx
+        0x0A => {
+            let mut c = emu.number_of_keys_pressed;
+            loop {
+                if emu.number_of_keys_pressed < c {
+                    c = emu.number_of_keys_pressed;
+                }
+
+                else if emu.number_of_keys_pressed > c {
+                    break;
+                }
+            }
+
+            emu.registers[x as usize] = emu.last_key_pressed;
+        },
+        0x15 => emu.delay_timer = emu.registers[xi],
+        0x18 => emu.sound_timer = emu.registers[xi],
+        0x1E => emu.index_register += emu.registers[xi] as u16,
+        0x29 => emu.index_register = FONTSET_LOC + 5 * x,
+        _ => ()
+    };
+
+
+    emu.program_counter += 2;
+}
+
 fn wait_for_keypress(emu: &mut Emulator, value: u16) {
     let x = value >> 8;
     let key: Option<&KeyState> = emu.keys.get(&(x as u8));
@@ -238,7 +273,7 @@ fn wait_for_keypress(emu: &mut Emulator, value: u16) {
             _ => ()
         }
     }
-    
+
     emu.program_counter += 2;
 }
 
@@ -284,7 +319,7 @@ mod tests {
         emu.memory[emu.program_counter] = 0x26;
         emu.memory[emu.program_counter + 1] = 0x23;
 
-        // Clear the screen 
+        // Clear the screen
         emu.memory[subroutine_loc] = 0x00;
         emu.memory[subroutine_loc + 1] = 0xE0;
 
@@ -306,7 +341,7 @@ mod tests {
     #[test]
     fn skip_true() {
         let mut emu = Emulator::new();
-        let pc = emu.program_counter; 
+        let pc = emu.program_counter;
 
         // Set register A to 33
         emu.memory[pc] = 0x6A;
@@ -315,7 +350,7 @@ mod tests {
         // Skip the next instruction if register A is 33
         emu.memory[pc + 2] = 0x3A;
         emu.memory[pc + 3] = 0x33;
-        
+
         // Set register A to 66
         emu.memory[pc + 4] = 0x6A;
         emu.memory[pc + 5] = 0x66;
@@ -331,13 +366,13 @@ mod tests {
         // is still at the inital value we set
         assert_eq!(0x33, emu.registers[0xA]);
     }
-    
+
     /// Test that we can insert a value to a register and then compare against
     /// value to skip the instruction
     #[test]
     fn skip_false() {
         let mut emu = Emulator::new();
-        let pc = emu.program_counter; 
+        let pc = emu.program_counter;
 
         // Set register A to A33
         emu.memory[pc] = 0x6A;
@@ -346,7 +381,7 @@ mod tests {
         // Skip the next instruction if register A is not A34
         emu.memory[pc + 2] = 0x4A;
         emu.memory[pc + 3] = 0x34;
-        
+
         // Set register A to 66
         emu.memory[pc + 4] = 0x6A;
         emu.memory[pc + 5] = 0x66;
@@ -372,7 +407,7 @@ mod tests {
         // Skip the next instruction if register A is 33
         emu.memory[pc + 2] = 0x3A;
         emu.memory[pc + 3] = 0x33;
-        
+
         // Set register A to 66
         emu.memory[pc + 4] = 0x6A;
         emu.memory[pc + 5] = 0x66;
@@ -388,13 +423,13 @@ mod tests {
         // is still at the inital value we set
         assert_eq!(0x33, emu.registers[0xA]);
     }
-    
+
     /// Test that we can insert a value to a register and then compare against
     /// value to skip the instruction
     #[test]
     fn skip_false2() {
         let mut emu = Emulator::new();
-        let pc = emu.program_counter; 
+        let pc = emu.program_counter;
 
         // Set register A to A33
         emu.memory[pc] = 0x6A;
@@ -403,7 +438,7 @@ mod tests {
         // Skip the next instruction if register A is not A34
         emu.memory[pc + 2] = 0x4A;
         emu.memory[pc + 3] = 0x34;
-        
+
 
         emu.registers[2] = 5;
         emu.registers[3] = 5;
@@ -451,7 +486,7 @@ mod tests {
 
         assert_eq!(11, emu.registers[3]);
     }
-    
+
     #[test]
     fn test_assign() {
         let mut emu = Emulator::new();
@@ -461,7 +496,7 @@ mod tests {
 
         emu.registers[y] = 5;
 
-        // Assign X to Y 
+        // Assign X to Y
         emu.memory[pc] = 0x8A;
         emu.memory[pc + 1] = 0x30;
 
