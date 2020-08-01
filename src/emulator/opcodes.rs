@@ -97,7 +97,7 @@ pub fn add_to_register(emu: &mut Emulator, value: u16) {
     let reg_loc = (value >> 8) as usize;
     let reg_inc = (value & 0x0FF) as u8;
 
-    emu.registers[reg_loc] += reg_inc;
+    emu.registers[reg_loc] = addition_carry(emu.registers[reg_loc], reg_inc).0;
     emu.program_counter += 2;
 }
 
@@ -255,6 +255,24 @@ pub fn misc_opcodes(emu: &mut Emulator, value: u16) {
         0x18 => emu.sound_timer = emu.registers[xi],
         0x1E => emu.index_register += emu.registers[xi] as u16,
         0x29 => emu.index_register = FONTSET_LOC + 5 * x,
+        0x33 => {
+            let bcd = get_binary_coded_decimal(emu.registers[xi]);
+            emu.memory[emu.index_register as usize + 0] = bcd.0;
+            emu.memory[emu.index_register as usize + 1] = bcd.1;
+            emu.memory[emu.index_register as usize + 2] = bcd.2;
+        },
+        0x55 => {
+            for i in 0..(x+1) {
+                emu.memory[(emu.index_register + i) as usize]
+                    = emu.registers[i as usize];
+            }
+        },
+        0x65 => {
+            for i in 0..(x+1) {
+                emu.registers[i as usize]
+                    = emu.memory[(emu.index_register + i) as usize];
+            }
+        }
         _ => ()
     };
 
@@ -262,19 +280,12 @@ pub fn misc_opcodes(emu: &mut Emulator, value: u16) {
     emu.program_counter += 2;
 }
 
-fn wait_for_keypress(emu: &mut Emulator, value: u16) {
-    let x = value >> 8;
-    let key: Option<&KeyState> = emu.keys.get(&(x as u8));
+fn get_binary_coded_decimal(value: u8) -> (u8, u8, u8) {
+    let x = value / 100;
+    let y = (value - (x * 100)) / 10;
+    let z = value - x * 100 - y * 10;
 
-    // Wait for the key to be pressed
-    loop {
-        match key {
-            Some(KeyState::DOWN) => break,
-            _ => ()
-        }
-    }
-
-    emu.program_counter += 2;
+    return (x, y, z);
 }
 
 impl Emulator {
@@ -623,5 +634,13 @@ mod tests {
         for pixel in emu.graphics.iter() {
             assert_eq!(Pixel::OFF, *pixel);
         }
+    }
+
+    #[test]
+    fn binary_coded_decimal() {
+        let bcd = get_binary_coded_decimal(254);
+        assert_eq!(2, bcd.0);
+        assert_eq!(5, bcd.1);
+        assert_eq!(4, bcd.2);
     }
 }

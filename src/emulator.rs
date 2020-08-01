@@ -1,11 +1,13 @@
 mod opcodes;
 
+use std::time::{Duration, Instant};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::ops::Not;
 
 // Where the program starts in memory
+const TIME_STEP_SECONDS: f32 = 1f32/60f32;
 const PROGRAM_LOC: usize = 0x200;
 const FONTSET_LOC: u16 = 0x050;
 const FONTSET: [u8; 5 * 16] = [
@@ -64,8 +66,10 @@ pub struct Emulator {
     keys: HashMap<u8, KeyState>,
     number_of_keys_pressed: i32,
     last_key_pressed: u8,
-    draw: bool,
-    clear: bool
+    pub draw: bool,
+    pub clear: bool,
+    last_cycle_time: Option<Instant>,
+    hz_counter: Duration
 }
 
 impl Emulator {
@@ -89,7 +93,9 @@ impl Emulator {
             number_of_keys_pressed: 0,
             last_key_pressed: 0,
             draw: false,
-            clear: false
+            clear: false,
+            last_cycle_time: None,
+            hz_counter: Duration::new(0, 0)
         };
 
         // Insert all the keys as currently unpressed
@@ -121,7 +127,53 @@ impl Emulator {
        self.graphics[((y * Emulator::SCREEN_WIDTH) + x) as usize]
     }
 
+    fn handle_timers(&mut self, delta: Option<Duration>) {
+        // Handle timers
+        match self.last_cycle_time {
+            // This is the first emulated cycle, nothing to do here
+            None => (),
+            Some(time) => {
+                let delta = match delta {
+                    Some(delta) => delta,
+                    None => time.elapsed()
+                };
+
+                self.hz_counter += delta;
+
+                if self.hz_counter > Duration::from_secs_f32(TIME_STEP_SECONDS) {
+                    self.hz_counter = Duration::new(0, 0);
+
+                    if self.delay_timer > 0 {
+                        self.delay_timer -= 1;
+                    }
+
+                    if self.sound_timer > 0 {
+                        self.sound_timer -= 1;
+
+                        if self.sound_timer == 1 {
+                            println!("Ping!");
+                        }
+                    }
+                }
+            }
+        };
+
+        self.last_cycle_time = Some(Instant::now());
+    }
+
+    /// Emulates a cycle of the emulator
+    ///
+    /// # Arguments
+    ///
+    /// * `delta` - The time since this emulator was last called in milliseconds,
+    /// if not provided an internal timer will be used
     pub fn emulate_cycle(&mut self) {
+        self.handle_timers(None);
+
+        // Reset the drawing an clearing flags
+        self.clear = false;
+        self.draw = false;
+
         let opcode = self.get_opcode();
         let (instruction, value) = Emulator::deconstruct_opcode(opcode);
 

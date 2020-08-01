@@ -71,7 +71,8 @@ fn emu_keypress(emu: &mut Emulator, keycode: Keycode, state: emulator::KeyState)
 }
 
 fn main() -> Result<(), String> {
-    let mut emu = load_emu();
+    //let mut emu = load_emu();
+    let mut emu = Emulator::load("./data/pong.ch8");
 
     let white: Color = Color::RGB(255, 255, 255);
     let black: Color = Color::RGB(0, 0, 0);
@@ -93,8 +94,14 @@ fn main() -> Result<(), String> {
     let mut events = sdl_context.event_pump()?;
 
     'main: loop {
+        emu.emulate_cycle();
+
         canvas.set_draw_color(Color::RGB(0, 0, 0));
-        canvas.clear();
+
+        if emu.clear {
+            canvas.clear();
+        }
+
         for event in events.poll_iter() {
             match event {
                 Event::Quit {..} |
@@ -116,19 +123,21 @@ fn main() -> Result<(), String> {
             }
         }
 
-        for y in 0..Emulator::SCREEN_HEIGHT {
-            for x in 0..Emulator::SCREEN_WIDTH {
-                let pixel = match emu.get_pixel(x, y) {
-                    emulator::Pixel::ON => white,
-                    emulator::Pixel::OFF => black
-                };
-                canvas.box_(
-                    (x * SCALE) as i16,
-                    (y * SCALE) as i16,
-                    (x * SCALE + SCALE) as i16,
-                    (y * SCALE + SCALE) as i16,
-                    pixel
-                ).unwrap();
+        if emu.draw {
+            for y in 0..Emulator::SCREEN_HEIGHT {
+                for x in 0..Emulator::SCREEN_WIDTH {
+                    let pixel = match emu.get_pixel(x, y) {
+                        emulator::Pixel::ON => white,
+                        emulator::Pixel::OFF => black
+                    };
+                    canvas.box_(
+                        (x * SCALE) as i16,
+                        (y * SCALE) as i16,
+                        (x * SCALE + SCALE) as i16,
+                        (y * SCALE + SCALE) as i16,
+                        pixel
+                    ).unwrap();
+                }
             }
         }
 
