@@ -182,7 +182,7 @@ pub fn draw(emu: &mut Emulator, value: u16) {
     let h = value & 0x00F;
     let mut flipped: bool = false;
 
-    println!("Drawing {:X} at x={}, y={}", emu.index_register, x, y);
+    //println!("Drawing {:X} at x={}, y={}", emu.index_register, x, y);
 
     for yline in 0..h {
         // Each byte is a line
@@ -196,7 +196,7 @@ pub fn draw(emu: &mut Emulator, value: u16) {
                 false => Pixel::OFF
             };
 
-            let did_flip = emu.set_pixel(x + (w - xline) - 2, y + yline, pixel);
+            let did_flip = emu.set_pixel(x + (w - xline), y + yline, pixel);
             flipped = flipped || did_flip;
         }
     }
@@ -215,6 +215,7 @@ pub fn skip_pressed(emu: &mut Emulator, value: u16) {
 
 fn skip_if_pressed(emu: &mut Emulator, value: u16) {
     let x = value >> 8;
+    println!("Skip if key {} IS pressed", x);
 
     match emu.keys.get(&(x as u8)) {
         Some(KeyState::DOWN) => emu.program_counter += 4,
@@ -224,6 +225,7 @@ fn skip_if_pressed(emu: &mut Emulator, value: u16) {
 
 fn skip_if_not_pressed(emu: &mut Emulator, value: u16) {
     let x = value >> 8;
+    println!("Skip if key {} IS NOT pressed", x);
 
     match emu.keys.get(&(x as u8)) {
         Some(KeyState::UP) => emu.program_counter += 4,
