@@ -96,8 +96,6 @@ fn main() -> Result<(), String> {
     'main: loop {
         emu.emulate_cycle();
 
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
-
         if emu.clear {
             canvas.clear();
         }
@@ -124,7 +122,9 @@ fn main() -> Result<(), String> {
         }
 
         if emu.draw {
+            canvas.set_draw_color(Color::RGB(0, 0, 0));
             canvas.clear();
+
             for y in 0..Emulator::SCREEN_HEIGHT {
                 for x in 0..Emulator::SCREEN_WIDTH {
                     let pixel = match emu.get_pixel(x, y) {
@@ -143,7 +143,7 @@ fn main() -> Result<(), String> {
         }
 
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        //::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 
     Ok(())

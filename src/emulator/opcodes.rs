@@ -196,7 +196,7 @@ pub fn draw(emu: &mut Emulator, value: u16) {
                 false => Pixel::OFF
             };
 
-            let did_flip = emu.set_pixel(x + (w - xline), y + yline, pixel);
+            let did_flip = emu.set_pixel(x + (w - xline) - 2, y + yline, pixel);
             flipped = flipped || did_flip;
         }
     }
