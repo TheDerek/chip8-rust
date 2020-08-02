@@ -128,6 +128,7 @@ impl Emulator {
     }
 
     fn handle_timers(&mut self, delta: Option<Duration>) {
+
         // Handle timers
         match self.last_cycle_time {
             // This is the first emulated cycle, nothing to do here
@@ -176,6 +177,8 @@ impl Emulator {
 
         let opcode = self.get_opcode();
         let (instruction, value) = Emulator::deconstruct_opcode(opcode);
+
+        //println!("{} {:X}", self.program_counter, opcode);
 
         let run = match instruction {
             0x0 => opcodes::system,

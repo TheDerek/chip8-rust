@@ -9,6 +9,7 @@ pub fn system(emu: &mut Emulator, value: u16) {
             emu.program_counter += 2;
             emu.graphics = [Pixel::OFF; Emulator::SCREEN_SIZE];
             emu.clear = true;
+            println!("Clearing the screen!");
         },
         _ => panic!("No instruction for 0x0{:X}", value)
     };
@@ -79,6 +80,7 @@ pub fn skip_condition(condition: fn(u8, u8) -> bool) -> Box<dyn Fn(&mut Emulator
     })
 }
 
+/// Instruction 6XNN, store the number NN in register VX
 pub fn set_register(emu: &mut Emulator, value: u16) {
     let reg_loc = (value >> 8) as usize;
     let new_reg_value = (value & 0x0FF) as u8;
@@ -127,6 +129,7 @@ pub fn maths_ops(emu: &mut Emulator, value: u16) {
 
     emu.registers[ix] = x;
     emu.registers[0xF] = f;
+    emu.program_counter += 2;
 }
 
 /// Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
@@ -151,10 +154,12 @@ fn minus_carry(x: u8, y: u8) -> (u8, u8) {
     (result as u8, 1)
 }
 
+/// BNNN
 pub fn goto_plus_register(emu: &mut Emulator, value: u16) {
     emu.program_counter = value as usize + emu.registers[0] as usize;
 }
 
+/// CXNN
 pub fn rand(emu: &mut Emulator, value: u16) {
     let ix: usize = (value >> 8).into();
     let nn = (value & 0x0FF) as u8;
@@ -163,6 +168,7 @@ pub fn rand(emu: &mut Emulator, value: u16) {
     emu.program_counter += 2;
 }
 
+/// DXYN
 pub fn draw(emu: &mut Emulator, value: u16) {
     emu.program_counter += 2;
     emu.draw = true;
@@ -174,7 +180,6 @@ pub fn draw(emu: &mut Emulator, value: u16) {
     let y = emu.registers[y as usize] as u16;
     let w = 8;
     let h = value & 0x00F;
-    let size = w * h;
     let mut flipped: bool = false;
 
     for yline in 0..h {
@@ -182,20 +187,21 @@ pub fn draw(emu: &mut Emulator, value: u16) {
         let line = emu.memory[(emu.index_register + yline) as usize];
 
         // For every bit in the line
-        for xline in 0..8 {
+        for xline in 0..w {
             // Get the most significant bit and check if it is 1
             let pixel = match ((line >> xline) & 0x01) == 1 {
                 true => Pixel::ON,
                 false => Pixel::OFF
             };
 
-            flipped = flipped || emu.set_pixel(x + (8 - xline), y + yline, pixel);
+            flipped = flipped || emu.set_pixel(x + (w - xline), y + yline, pixel);
         }
     }
 
     emu.registers[0xF] = if flipped { 1 } else { 0 };
 }
 
+/// EX9E & EXA1
 pub fn skip_pressed(emu: &mut Emulator, value: u16) {
     (match value & 0x0FF {
         0x9E => skip_if_pressed,
@@ -286,6 +292,10 @@ fn get_binary_coded_decimal(value: u8) -> (u8, u8, u8) {
 impl Emulator {
     fn set_pixel(&mut self, x: u16, y: u16, pixel: Pixel) -> bool {
         let i = (y * Emulator::SCREEN_WIDTH + x) as usize;
+
+        if i > (Emulator::SCREEN_WIDTH * Emulator::SCREEN_HEIGHT - 1) as usize {
+            return false;
+        }
 
         if self.graphics[i] != pixel {
             let flipped_to_unset = self.graphics[i] == Pixel::ON;
