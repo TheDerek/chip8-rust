@@ -182,6 +182,8 @@ pub fn draw(emu: &mut Emulator, value: u16) {
     let h = value & 0x00F;
     let mut flipped: bool = false;
 
+    println!("Drawing {:X} at x={}, y={}", emu.index_register, x, y);
+
     for yline in 0..h {
         // Each byte is a line
         let line = emu.memory[(emu.index_register + yline) as usize];
@@ -194,7 +196,8 @@ pub fn draw(emu: &mut Emulator, value: u16) {
                 false => Pixel::OFF
             };
 
-            flipped = flipped || emu.set_pixel(x + (w - xline), y + yline, pixel);
+            let did_flip = emu.set_pixel(x + (w - xline), y + yline, pixel);
+            flipped = flipped || did_flip;
         }
     }
 
@@ -297,13 +300,19 @@ impl Emulator {
             return false;
         }
 
-        if self.graphics[i] != pixel {
-            let flipped_to_unset = self.graphics[i] == Pixel::ON;
-            self.graphics[i] = !self.graphics[i];
-            return flipped_to_unset;
+        let previous_state: Pixel = self.graphics[i];
+
+        if previous_state != pixel {
+            // If the current pixel is different to the new pixel the value
+            // will be set to ON
+            self.graphics[i] = Pixel::ON;
+        } else {
+            // Otherwise it will be OFF
+            self.graphics[i] = Pixel::OFF;
         }
 
-        return false;
+        // If the pixel changed from ON -> OFF indicate that it was
+        return previous_state == Pixel::ON && self.graphics[i] == Pixel::OFF;
     }
 }
 

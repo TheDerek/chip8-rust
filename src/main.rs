@@ -124,6 +124,7 @@ fn main() -> Result<(), String> {
         }
 
         if emu.draw {
+            canvas.clear();
             for y in 0..Emulator::SCREEN_HEIGHT {
                 for x in 0..Emulator::SCREEN_WIDTH {
                     let pixel = match emu.get_pixel(x, y) {
