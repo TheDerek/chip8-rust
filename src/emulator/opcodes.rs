@@ -182,8 +182,6 @@ pub fn draw(emu: &mut Emulator, value: u16) {
     let h = value & 0x00F;
     let mut flipped: bool = false;
 
-    //println!("Drawing {:X} at x={}, y={}", emu.index_register, x, y);
-
     for yline in 0..h {
         // Each byte is a line
         let line = emu.memory[(emu.index_register + yline) as usize];
@@ -191,12 +189,12 @@ pub fn draw(emu: &mut Emulator, value: u16) {
         // For every bit in the line
         for xline in 0..w {
             // Get the most significant bit and check if it is 1
-            let pixel = match ((line >> xline) & 0x01) == 1 {
+            let pixel = match (line & (0x80 >> xline)) != 0 {
                 true => Pixel::ON,
                 false => Pixel::OFF
             };
 
-            let did_flip = emu.set_pixel(x + (w - xline), y + yline, pixel);
+            let did_flip = emu.set_pixel(x + xline, y + yline, pixel);
             flipped = flipped || did_flip;
         }
     }

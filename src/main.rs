@@ -128,6 +128,7 @@ fn main() -> Result<(), String> {
                         emulator::Pixel::ON => white,
                         emulator::Pixel::OFF => black
                     };
+
                     canvas.box_(
                         (x * SCALE) as i16,
                         (y * SCALE) as i16,
