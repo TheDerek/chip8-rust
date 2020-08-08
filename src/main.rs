@@ -9,10 +9,14 @@ use sdl2::keyboard::Keycode;
 use std::time::Duration;
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels::Color;
+use sdl2::rect::Rect;
 
 const SCALE: u16 = 20;
 const SCREEN_WIDTH: u16 = Emulator::SCREEN_WIDTH * SCALE;
 const SCREEN_HEIGHT: u16 = Emulator::SCREEN_HEIGHT * SCALE;
+const INPUT_PANEL_HEIGHT: u16 = 100;
+const INPUT_KEY_WIDTH: i16 = 50;
+const INPUT_KEY_HEIGHT: i16 = 40;
 
 fn load_emu() -> Emulator {
     let mut emu = Emulator::new();
@@ -72,22 +76,28 @@ fn emu_keypress(emu: &mut Emulator, keycode: Keycode, state: emulator::KeyState)
 
 fn main() -> Result<(), String> {
     //let mut emu = load_emu();
-    let mut emu = Emulator::load("./data/breakout.ch8");
+    let mut emu = Emulator::load("./data/space-invaders.ch8");
+
+    // Load the font we will be using
+    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
+    let font = ttf_context.load_font("./data/hack.ttf", 128)?;
 
     let white: Color = Color::RGB(255, 255, 255);
     let black: Color = Color::RGB(0, 0, 0);
+    let red: Color = Color::RGB(255, 0, 0);
 
     let sdl_context = sdl2::init()?;
     let video_subsys = sdl_context.video()?;
-    let window = video_subsys.window("Derek's Chip8 Emulator", SCREEN_WIDTH.into(), SCREEN_HEIGHT.into())
+    let window = video_subsys.window("Derek's Chip8 Emulator", SCREEN_WIDTH.into(), (SCREEN_HEIGHT + INPUT_PANEL_HEIGHT).into())
         .position_centered()
         .opengl()
         .build()
         .map_err(|e| e.to_string())?;
 
     let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+    let texture_creator = canvas.texture_creator();
 
-    canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
+    canvas.set_draw_color(black);
     canvas.clear();
     canvas.present();
 
@@ -96,9 +106,8 @@ fn main() -> Result<(), String> {
     'main: loop {
         emu.emulate_cycle();
 
-        if emu.clear {
-            canvas.clear();
-        }
+        canvas.clear();
+        canvas.set_draw_color(black);
 
         for event in events.poll_iter() {
             match event {
@@ -120,28 +129,70 @@ fn main() -> Result<(), String> {
                 _ => {}
             }
         }
+        
 
-        if emu.draw {
-            for y in 0..Emulator::SCREEN_HEIGHT {
-                for x in 0..Emulator::SCREEN_WIDTH {
-                    let pixel = match emu.get_pixel(x, y) {
-                        emulator::Pixel::ON => white,
-                        emulator::Pixel::OFF => black
-                    };
+        for y in 0..Emulator::SCREEN_HEIGHT {
+            for x in 0..Emulator::SCREEN_WIDTH {
+                let pixel = match emu.get_pixel(x, y) {
+                    emulator::Pixel::ON => white,
+                    emulator::Pixel::OFF => black
+                };
 
-                    canvas.box_(
-                        (x * SCALE) as i16,
-                        (y * SCALE) as i16,
-                        (x * SCALE + SCALE) as i16,
-                        (y * SCALE + SCALE) as i16,
-                        pixel
-                    ).unwrap();
-                }
+                canvas.box_(
+                    (x * SCALE) as i16,
+                    (y * SCALE) as i16,
+                    (x * SCALE + SCALE) as i16,
+                    (y * SCALE + SCALE) as i16,
+                    pixel
+                ).unwrap();
             }
         }
+        
+        // Draw the pixel lines
+        for y in 0..Emulator::SCREEN_HEIGHT {
+            canvas.line(
+                0,
+                (y * SCALE) as i16,
+                SCREEN_WIDTH as i16,
+                (y * SCALE) as i16,
+                red
+            ).unwrap();
+        }
+
+
+        for x in 0..Emulator::SCREEN_WIDTH {
+            canvas.line(
+                (x * SCALE) as i16,
+                0,
+                (x * SCALE) as i16,
+                SCREEN_HEIGHT as i16,
+                red
+            ).unwrap();
+        }
+
+        canvas.set_draw_color(black);
+
+        // Draw the input information
+        let margin = 10;
+        for i in 0..16 {
+            canvas.box_(
+                i * INPUT_KEY_WIDTH + margin,
+                SCREEN_HEIGHT as i16 + margin,
+                i * INPUT_KEY_WIDTH + INPUT_KEY_WIDTH,
+                SCREEN_HEIGHT as i16 + INPUT_KEY_HEIGHT,
+                white
+            ).unwrap();
+        }
+
+        let surface = font.render("Hello Rust!")
+            .blended(Color::RGBA(255, 255, 255, 255)).map_err(|e| e.to_string())?;
+        let texture = texture_creator.create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string())?;
+        canvas.copy(&texture, None, Rect::new(0, SCREEN_HEIGHT.into(), 100, 50))?;
+
 
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));
+        //::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));
     }
 
     Ok(())
