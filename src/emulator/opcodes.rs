@@ -204,28 +204,26 @@ pub fn draw(emu: &mut Emulator, value: u16) {
 
 /// EX9E & EXA1
 pub fn skip_pressed(emu: &mut Emulator, value: u16) {
+    // Get the key from VX
+    let x = value >> 8;
+    let key = emu.registers[x as usize];
+
     (match value & 0x0FF {
         0x9E => skip_if_pressed,
         0xA1 => skip_if_not_pressed,
         _ => panic!("No instruction for 0xE{:X}", value)
-    })(emu, value);
+    })(emu, key);
 }
 
-fn skip_if_pressed(emu: &mut Emulator, value: u16) {
-    let x = value >> 8;
-    println!("Skip if key {} IS pressed", x);
-
-    match emu.keys.get(&(x as u8)) {
+fn skip_if_pressed(emu: &mut Emulator, key: u8) {
+    match emu.keys.get(&key) {
         Some(KeyState::DOWN) => emu.program_counter += 4,
         _ => emu.program_counter += 2
     }
 }
 
-fn skip_if_not_pressed(emu: &mut Emulator, value: u16) {
-    let x = value >> 8;
-    println!("Skip if key {} IS NOT pressed", x);
-
-    match emu.keys.get(&(x as u8)) {
+fn skip_if_not_pressed(emu: &mut Emulator, key: u8) {
+    match emu.keys.get(&key) {
         Some(KeyState::UP) => emu.program_counter += 4,
         _ => emu.program_counter += 2
     }
