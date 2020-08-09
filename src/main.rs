@@ -9,42 +9,35 @@ use sdl2::keyboard::Keycode;
 use std::time::Duration;
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels::Color;
+use std::collections::HashMap;
 
 const SCALE: u16 = 20;
 const SCREEN_WIDTH: u16 = Emulator::SCREEN_WIDTH * SCALE;
 const SCREEN_HEIGHT: u16 = Emulator::SCREEN_HEIGHT * SCALE;
-
-fn load_emu() -> Emulator {
-    let mut emu = Emulator::new();
-    let pc = emu.program_counter;
-    emu.memory[pc + 0] = 0x60;
-    emu.memory[pc + 1] = 0x20;
-
-    emu.memory[pc + 2] = 0x61;
-    emu.memory[pc + 3] = 0x10;
-
-    emu.memory[pc + 4] = 0xA2;
-    emu.memory[pc + 5] = 0x08;
-
-    emu.memory[pc + 6] = 0xD0;
-    emu.memory[pc + 7] = 0x13;
-
-    emu.memory[pc + 8] = 0x3C;
-    emu.memory[pc + 9] = 0xC3;
-    emu.memory[pc + 10] = 0xFF;
-
-    for _ in 0..4 {
-        emu.emulate_cycle();
-    }
-
-    emu
-}
+static KEY_MAP: &'static [Keycode] = &[
+    Keycode::X,
+    Keycode::Num1,
+    Keycode::Num2,
+    Keycode::Num3,
+    Keycode::Q,
+    Keycode::W,
+    Keycode::E,
+    Keycode::A,
+    Keycode::S,
+    Keycode::D,
+    Keycode::Z,
+    Keycode::C,
+    Keycode::Num4,
+    Keycode::R,
+    Keycode::F,
+    Keycode::V,
+];
 
 fn emu_keypress(emu: &mut Emulator, keycode: Keycode, state: emulator::KeyState) {
     let key: Option<u8> = match keycode {
         Keycode::Num1 => Some(0x1),
         Keycode::Num2 => Some(0x2),
-        Keycode::Num3 => Some(3),
+        Keycode::Num3 => Some(0x3),
         Keycode::Num4 => Some(0xC),
         Keycode::Q => Some(0x4),
         Keycode::W => Some(0x5),
@@ -63,16 +56,27 @@ fn emu_keypress(emu: &mut Emulator, keycode: Keycode, state: emulator::KeyState)
 
     match key {
         Some(key) => {
-            println!("{:?} = 0x{:x} key pressed {:?}", keycode, key, state);
             emu.set_key(key, state);
         },
         None => ()
     }
 }
 
+/// Write emulator info to the terminal
+fn write_emu_info(emu: &mut Emulator) {
+    // Clear any existing stuff
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+
+    // Write the state of each input
+    println!("Input\n-----\n");
+    for (value, key) in KEY_MAP.iter().enumerate() {
+        println!("Key: [{}]\tValue: {:X}\tState: {:?}", key, value, emu.get_key(value as u8));
+    }
+}
+
 fn main() -> Result<(), String> {
     //let mut emu = load_emu();
-    let mut emu = Emulator::load("./data/breakout.ch8");
+    let mut emu = Emulator::load("./data/pong.ch8");
 
     let white: Color = Color::RGB(255, 255, 255);
     let black: Color = Color::RGB(0, 0, 0);
@@ -96,9 +100,7 @@ fn main() -> Result<(), String> {
     'main: loop {
         emu.emulate_cycle();
 
-        if emu.clear {
-            canvas.clear();
-        }
+        canvas.clear();
 
         for event in events.poll_iter() {
             match event {
@@ -121,24 +123,25 @@ fn main() -> Result<(), String> {
             }
         }
 
-        if emu.draw {
-            for y in 0..Emulator::SCREEN_HEIGHT {
-                for x in 0..Emulator::SCREEN_WIDTH {
-                    let pixel = match emu.get_pixel(x, y) {
-                        emulator::Pixel::ON => white,
-                        emulator::Pixel::OFF => black
-                    };
+        for y in 0..Emulator::SCREEN_HEIGHT {
+            for x in 0..Emulator::SCREEN_WIDTH {
+                let pixel = match emu.get_pixel(x, y) {
+                    emulator::Pixel::ON => white,
+                    emulator::Pixel::OFF => black
+                };
 
-                    canvas.box_(
-                        (x * SCALE) as i16,
-                        (y * SCALE) as i16,
-                        (x * SCALE + SCALE) as i16,
-                        (y * SCALE + SCALE) as i16,
-                        pixel
-                    ).unwrap();
-                }
+                canvas.box_(
+                    (x * SCALE) as i16,
+                    (y * SCALE) as i16,
+                    (x * SCALE + SCALE) as i16,
+                    (y * SCALE + SCALE) as i16,
+                    pixel
+                ).unwrap();
             }
         }
+
+        // Write debugging info to the terminal
+        write_emu_info(&mut emu);
 
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));

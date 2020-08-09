@@ -221,6 +221,13 @@ impl Emulator {
         self.keys.insert(key, state);
     }
 
+    pub fn get_key(&self, key: u8) -> KeyState {
+        match self.keys.get(&key) {
+            Some(KeyState::DOWN) => KeyState::DOWN,
+            _ => KeyState::UP
+        }
+    }
+
     fn get_opcode(&self) -> u16 {
         (self.memory[self.program_counter] as u16) << 8
             | self.memory[self.program_counter + 1] as u16
