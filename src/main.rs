@@ -10,12 +10,14 @@ use std::time::Duration;
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
+use std::any::type_name;
 
 const SCALE: u16 = 20;
 const SCREEN_WIDTH: u16 = Emulator::SCREEN_WIDTH * SCALE;
 const SCREEN_HEIGHT: u16 = Emulator::SCREEN_HEIGHT * SCALE;
 const INPUT_PANEL_HEIGHT: u16 = 100;
 const INPUT_KEY_WIDTH: i16 = 50;
+const INPUT_KEY_MARGIN: i16 = 10;
 const INPUT_KEY_HEIGHT: i16 = 40;
 
 fn load_emu() -> Emulator {
@@ -74,13 +76,41 @@ fn emu_keypress(emu: &mut Emulator, keycode: Keycode, state: emulator::KeyState)
     }
 }
 
+struct TextRenderer<'a> {
+    font: sdl2::ttf::Font<'a, 'a>,
+    texture_creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+    canvas: &'a mut sdl2::render::Canvas<sdl2::video::Window>,
+//    ttf_context: sdl2::ttf::Sdl2TtfContext,
+}
+
+impl<'a> TextRenderer<'a> {
+    fn new(path: &str, canvas: &'a mut sdl2::render::Canvas<sdl2::video::Window>) -> TextRenderer<'a> {
+        let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string()).unwrap();
+        let font = ttf_context.load_font(path, 128).unwrap();
+        let texture_creator = canvas.texture_creator();
+
+        TextRenderer {
+            canvas: canvas,
+            font: font,
+            texture_creator: texture_creator
+//            ttf_context: ttf_context,
+        }
+    }
+
+    fn render(&mut self, text: &str, rect: Rect) {
+        let surface = self.font.render(text)
+            .blended(Color::RGBA(255, 255, 255, 255)).map_err(|e| e.to_string()).unwrap();
+
+        let texture = self.texture_creator.create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string()).unwrap();
+
+        self.canvas.copy(&texture, None, rect).unwrap();
+    }
+}
+
 fn main() -> Result<(), String> {
     //let mut emu = load_emu();
     let mut emu = Emulator::load("./data/space-invaders.ch8");
-
-    // Load the font we will be using
-    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
-    let font = ttf_context.load_font("./data/hack.ttf", 128)?;
 
     let white: Color = Color::RGB(255, 255, 255);
     let black: Color = Color::RGB(0, 0, 0);
@@ -95,7 +125,7 @@ fn main() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
-    let texture_creator = canvas.texture_creator();
+    let text_renderer = TextRenderer::new("./data/hack.ttf", &mut canvas);
 
     canvas.set_draw_color(black);
     canvas.clear();
@@ -160,6 +190,7 @@ fn main() -> Result<(), String> {
         }
 
 
+
         for x in 0..Emulator::SCREEN_WIDTH {
             canvas.line(
                 (x * SCALE) as i16,
@@ -170,27 +201,29 @@ fn main() -> Result<(), String> {
             ).unwrap();
         }
 
-        canvas.set_draw_color(black);
-
         // Draw the input information
-        let margin = 10;
         for i in 0..16 {
+            let x = INPUT_KEY_WIDTH * i + i * INPUT_KEY_MARGIN + INPUT_KEY_MARGIN;
+            let y = SCREEN_HEIGHT as i16 + INPUT_KEY_MARGIN;
             canvas.box_(
-                i * INPUT_KEY_WIDTH + margin,
-                SCREEN_HEIGHT as i16 + margin,
-                i * INPUT_KEY_WIDTH + INPUT_KEY_WIDTH,
-                SCREEN_HEIGHT as i16 + INPUT_KEY_HEIGHT,
+                x,
+                y,
+                x + INPUT_KEY_WIDTH,
+                y + INPUT_KEY_HEIGHT,
                 white
             ).unwrap();
         }
 
-        let surface = font.render("Hello Rust!")
-            .blended(Color::RGBA(255, 255, 255, 255)).map_err(|e| e.to_string())?;
-        let texture = texture_creator.create_texture_from_surface(&surface)
-            .map_err(|e| e.to_string())?;
-        canvas.copy(&texture, None, Rect::new(0, SCREEN_HEIGHT.into(), 100, 50))?;
+        text_renderer.render("Hello world", Rect::new(0, SCREEN_HEIGHT.into(), 100, 50));
+
+//        let surface = font.render("Hello Rust!")
+//            .blended(Color::RGBA(255, 255, 255, 255)).map_err(|e| e.to_string())?;
+//        let texture = texture_creator.create_texture_from_surface(&surface)
+//            .map_err(|e| e.to_string())?;
+//        canvas.copy(&texture, None, Rect::new(0, SCREEN_HEIGHT.into(), 100, 50))?;
 
 
+        canvas.set_draw_color(black);
         canvas.present();
         //::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));
     }
