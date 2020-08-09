@@ -9,7 +9,7 @@ use sdl2::keyboard::Keycode;
 use std::time::Duration;
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels::Color;
-use std::collections::HashMap;
+use std::env;
 
 const SCALE: u16 = 20;
 const SCREEN_WIDTH: u16 = Emulator::SCREEN_WIDTH * SCALE;
@@ -75,8 +75,15 @@ fn write_emu_info(emu: &mut Emulator) {
 }
 
 fn main() -> Result<(), String> {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        return Err("Please supply a path to the chip8 rom you wish to emulate".to_string());
+    }
+
+    let path = &args[1];
+
     //let mut emu = load_emu();
-    let mut emu = Emulator::load("./data/pong.ch8");
+    let mut emu = Emulator::load(&path);
 
     let white: Color = Color::RGB(255, 255, 255);
     let black: Color = Color::RGB(0, 0, 0);
