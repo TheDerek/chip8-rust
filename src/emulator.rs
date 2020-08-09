@@ -53,7 +53,6 @@ impl Not for Pixel {
 }
 
 pub struct Emulator {
-    opcode: u16,
     pub memory: [u8; 4096],
     registers: [u8; 16],
     index_register: u16,
@@ -79,7 +78,6 @@ impl Emulator {
 
     pub fn new() -> Emulator {
         let mut emu = Emulator {
-            opcode: 0,
             memory: [0; 4096],
             registers: [0; 16],
             index_register: 0,

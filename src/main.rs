@@ -151,7 +151,7 @@ fn main() -> Result<(), String> {
         write_emu_info(&mut emu);
 
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));
+        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 240));
     }
 
     Ok(())
